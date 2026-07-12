@@ -36,6 +36,9 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     });
   };
 
+  const [isPaused, setIsPaused] = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
+
   useEffect(() => {
     setLevel(initialLevel);
   }, [initialLevel]);
@@ -46,11 +49,11 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   // Update timeLeft when level changes
   useEffect(() => {
     setTimeLeft(level % 10 === 0 ? 180 : 90);
-  }, [level]);
+  }, [level, retryTrigger]);
 
   // Handle Level Survival Timer Countdown
   useEffect(() => {
-    if (['IDLE', 'SWAPPING', 'MATCHING', 'FALLING', 'REFILLING'].includes(gameState)) {
+    if (['IDLE', 'SWAPPING', 'MATCHING', 'FALLING', 'REFILLING'].includes(gameState) && !isPaused) {
       const timerInterval = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -68,7 +71,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
       }, 1000);
       return () => clearInterval(timerInterval);
     }
-  }, [gameState]);
+  }, [gameState, isPaused]);
   
   // Initialize Level
   useEffect(() => {
@@ -133,7 +136,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     return () => {
       active = false;
     };
-  }, [level]);
+  }, [level, retryTrigger]);
 
   const [recentAttacks, setRecentAttacks] = useState<Record<TileType, number>>({
     [TileType.EMPTY]: 0, [TileType.SWORD]: 0, [TileType.GUN]: 0, 
@@ -321,6 +324,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
 
   // Process game state machine
   useEffect(() => {
+    if (isPaused) return;
     let timeoutId: number;
 
     if (gameState === 'IDLE') {
@@ -449,9 +453,10 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         window.clearTimeout(timeoutId);
       }
     };
-  }, [gameState, handleCombat, processEnemyAttacks, rainbowTriggered]);
+  }, [gameState, handleCombat, processEnemyAttacks, rainbowTriggered, isPaused]);
 
   const onTileClick = (pos: Position) => {
+    if (isPaused) return;
     if (gameState !== 'IDLE') return;
 
     if (!selectedPos) {
@@ -505,6 +510,16 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     }, 2000);
   };
 
+  const retryLevel = () => {
+    setScore(0);
+    setFever(0);
+    setPrinceAttacks(false);
+    setSelectedPos(null);
+    setCombo(0);
+    setRetryTrigger(prev => prev + 1);
+    setIsPaused(false);
+  };
+
   return {
     board,
     gameState,
@@ -526,6 +541,9 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     timeLeft,
     levelCarrots,
     comboPopup,
-    setComboPopup
+    setComboPopup,
+    isPaused,
+    setIsPaused,
+    retryLevel
   };
 };

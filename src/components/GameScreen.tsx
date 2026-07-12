@@ -124,7 +124,7 @@ const SlotMachine = ({ onComplete, levelCarrots = 0 }: { onComplete: (carrots: n
 };
 
 export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades = { level: 1 }, onWin, onLose, onExit, onClearTiles }) => {
-  const { board, gameState, selectedPos, onTileClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft, levelCarrots, comboPopup } = useGame({
+  const { board, gameState, selectedPos, onTileClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft, levelCarrots, comboPopup, isPaused, setIsPaused, retryLevel } = useGame({
     initialLevel,
     upgrades,
     onWin,
@@ -276,12 +276,20 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
         </div>
       )}
 
-      <button 
-        onClick={onExit}
-        className="absolute top-2 right-2 z-50 bg-black/50 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/20"
-      >
-        QUIT
-      </button>
+      <div className="absolute top-2 right-2 z-50 flex gap-2">
+        <button 
+          onClick={() => setIsPaused(true)}
+          className="bg-black/60 hover:bg-black/80 text-white px-3.5 py-1.5 rounded-full text-xs font-black border border-white/20 shadow-lg flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+        >
+          ⏸️ PAUSE
+        </button>
+        <button 
+          onClick={() => setIsPaused(true)}
+          className="bg-black/60 hover:bg-red-950/60 text-white px-3.5 py-1.5 rounded-full text-xs font-black border border-white/20 shadow-lg flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+        >
+          🚪 QUIT
+        </button>
+      </div>
 
       {/* Score Display */}
       <div className="absolute top-2 left-2 z-50 flex flex-col gap-1.5 items-start">
@@ -451,6 +459,76 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
           <h2 className="text-white font-black text-2xl animate-pulse">LOADING NEXT LEVEL...</h2>
         </div>
       )}
+
+      <AnimatePresence>
+        {isPaused && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[200] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-slate-900 border-4 border-yellow-400 p-6 rounded-3xl max-w-xs w-full text-center shadow-[0_0_50px_rgba(234,179,8,0.35)] relative"
+            >
+              {/* Crown Decoration */}
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-4xl animate-bounce">
+                👑
+              </div>
+
+              <h2 className="text-2xl font-black text-yellow-400 mb-2 tracking-wide uppercase mt-2">
+                GAME PAUSED
+              </h2>
+              <p className="text-xs text-gray-400 font-bold mb-4">
+                Level {level} • Wave {wave + 1}
+              </p>
+
+              {/* Live Stats Summary */}
+              <div className="bg-slate-950/80 rounded-2xl p-3 border border-white/5 mb-6 flex flex-col gap-1 text-left font-mono">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500 font-bold">SCORE:</span>
+                  <span className="text-yellow-400 font-black">{score.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500 font-bold">TIME:</span>
+                  <span className="text-sky-400 font-bold">{formatTime(timeLeft)}</span>
+                </div>
+                {levelCarrots > 0 && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500 font-bold">BONUS CARROTS:</span>
+                    <span className="text-emerald-400 font-bold">🥕 {levelCarrots}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Menu */}
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => setIsPaused(false)}
+                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-black text-base border-b-4 border-emerald-700 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider shadow-md"
+                >
+                  ▶️ RESUME
+                </button>
+                <button 
+                  onClick={retryLevel}
+                  className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-black text-base border-b-4 border-amber-700 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider shadow-md"
+                >
+                  🔄 RETRY LEVEL
+                </button>
+                <button 
+                  onClick={onExit}
+                  className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black text-base border-b-4 border-slate-950 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider shadow-md"
+                >
+                  🚪 QUIT TO MAP
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

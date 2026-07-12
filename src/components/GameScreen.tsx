@@ -276,20 +276,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
         </div>
       )}
 
-      <div className="absolute top-2 right-2 z-50 flex gap-2">
-        <button 
-          onClick={() => setIsPaused(true)}
-          className="bg-black/60 hover:bg-black/80 text-white px-3.5 py-1.5 rounded-full text-xs font-black border border-white/20 shadow-lg flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
-        >
-          ⏸️ PAUSE
-        </button>
-        <button 
-          onClick={() => setIsPaused(true)}
-          className="bg-black/60 hover:bg-red-950/60 text-white px-3.5 py-1.5 rounded-full text-xs font-black border border-white/20 shadow-lg flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
-        >
-          🚪 QUIT
-        </button>
-      </div>
+
 
       {/* Score Display */}
       <div className="absolute top-2 left-2 z-50 flex flex-col gap-1.5 items-start">
@@ -444,6 +431,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
             onTileClick={onTileClick}
             width={boardWidth}
           />
+        </div>
+
+        {/* Lower Bottom Action Buttons */}
+        <div className="mt-auto px-4 pt-3 pb-3 flex gap-3 justify-center items-center">
+          <button 
+            onClick={() => setIsPaused(true)}
+            className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black text-xs border border-white/20 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+          >
+            ⏸️ PAUSE
+          </button>
+          <button 
+            onClick={() => setIsPaused(true)}
+            className="flex-1 py-2.5 bg-red-950/80 hover:bg-red-900/90 text-white rounded-xl font-black text-xs border border-red-500/30 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+          >
+            🚪 QUIT
+          </button>
         </div>
       </div>
       

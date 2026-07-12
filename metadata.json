@@ -1,0 +1,6 @@
+{
+  "name": "Fat Prince Gyuuun Tile Match",
+  "description": "An exact replica of the Match-3 RPG puzzle game featuring 1000 procedural levels.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

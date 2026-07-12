@@ -20,14 +20,25 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   const [comboPopup, setComboPopup] = useState<{ text: string, carrots: number, multiplier: number, id: string } | null>(null);
   
   const [level, setLevel] = useState(initialLevel);
-  
-  useEffect(() => {
-    setLevel(initialLevel);
-  }, [initialLevel]);
   const [wave, setWave] = useState(0);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [characters, setCharacters] = useState<Character[]>(INITIAL_CHARACTERS);
   const [currentLevelData, setCurrentLevelData] = useState<any>(getLevelData(initialLevel));
+
+  const stateRef = useRef({ board, enemies, characters, level, wave, combo, fever, currentLevelData });
+  stateRef.current = { board, enemies, characters, level, wave, combo, fever, currentLevelData };
+
+  const updateBoard = (updater: Tile[] | ((prev: Tile[]) => Tile[])) => {
+    setBoard(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      stateRef.current.board = next;
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    setLevel(initialLevel);
+  }, [initialLevel]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isAiGenerated, setIsAiGenerated] = useState(false);
   const [timeLeft, setTimeLeft] = useState(initialLevel % 10 === 0 ? 180 : 90);
@@ -85,7 +96,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     while(hasMatches(newBoard)) {
       newBoard = createBoard();
     }
-    setBoard(newBoard);
+    updateBoard(newBoard);
     setGameState('IDLE');
 
     // 2. Fetch customized AI-generated enemies from the Express backend
@@ -129,7 +140,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0
   });
 
-  const stateRef = useRef({ board, enemies, characters, level, wave, combo, fever, currentLevelData });
+  // Keep stateRef updated on every render
   stateRef.current = { board, enemies, characters, level, wave, combo, fever, currentLevelData };
 
   const handleCombat = useCallback((counts: Record<TileType, number>) => {
@@ -336,7 +347,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
 
         audio.playMatch(currentCombo);
         handleCombat(counts);
-        setBoard(prev => prev.map(t => ({ ...t, type: TileType.EMPTY, isGlowing: false })));
+        updateBoard(prev => prev.map(t => ({ ...t, type: TileType.EMPTY, isGlowing: false })));
         setRainbowTriggered(false);
         timeoutId = window.setTimeout(() => setGameState('FALLING'), 300);
         return;
@@ -406,7 +417,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         
         // Remove matched tiles
         const matchedIds = new Set(matchResult.matchedTiles.map(t => t.id));
-        setBoard(prev => {
+        updateBoard(prev => {
            const updated = prev.map(t => matchedIds.has(t.id) ? { ...t, type: TileType.EMPTY, isGlowing: false } : t);
            // Add special spawns
            if (matchResult.specialSpawns) {
@@ -426,10 +437,10 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         processEnemyAttacks();
       }
     } else if (gameState === 'FALLING') {
-      setBoard(prev => applyGravity(prev));
+      updateBoard(prev => applyGravity(prev));
       timeoutId = window.setTimeout(() => setGameState('REFILLING'), 300);
     } else if (gameState === 'REFILLING') {
-      setBoard(prev => fillEmptySpaces(prev));
+      updateBoard(prev => fillEmptySpaces(prev));
       timeoutId = window.setTimeout(() => setGameState('MATCHING'), 300);
     }
 
@@ -456,7 +467,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
       setGameState('SWAPPING');
       audio.playSwap();
       const swappedBoard = swapTiles(board, selectedPos, pos);
-      setBoard(swappedBoard);
+      updateBoard(swappedBoard);
       setSelectedPos(null);
 
       const t1 = board.find(t => t.r === selectedPos.r && t.c === selectedPos.c);
@@ -472,7 +483,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
           setGameState('MATCHING');
         } else {
           // Revert swap
-          setBoard(board);
+          updateBoard(board);
           setGameState('IDLE');
           audio.playError();
         }

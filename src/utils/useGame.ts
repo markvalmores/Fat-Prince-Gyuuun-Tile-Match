@@ -16,6 +16,8 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   const [highScore, setHighScore] = useState(0);
   const [fever, setFever] = useState(0);
   const [princeAttacks, setPrinceAttacks] = useState(false);
+  const [levelCarrots, setLevelCarrots] = useState(0);
+  const [comboPopup, setComboPopup] = useState<{ text: string, carrots: number, multiplier: number, id: string } | null>(null);
   
   const [level, setLevel] = useState(initialLevel);
   
@@ -65,6 +67,8 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     setWave(0);
     setEnemies(fallbackData.waves[0]);
     setIsAiGenerated(false);
+    setLevelCarrots(0);
+    setComboPopup(null);
     
     // Scale characters
     const hpMultiplier = Math.pow(1.04, level - 1);
@@ -342,13 +346,59 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
       if (matchResult.matchedTiles.length > 0) {
         setCombo(c => c + 1);
         
+        // Calculate max match group size and any bonus carrots
+        let maxGroupSize = 3;
+        let bonusCarrotsThisMatch = 0;
+        
+        if (matchResult.matchGroups) {
+          matchResult.matchGroups.forEach(group => {
+            const size = group.tiles.length;
+            if (size > maxGroupSize) {
+              maxGroupSize = size;
+            }
+            if (size === 4) {
+              bonusCarrotsThisMatch += 5;
+            } else if (size === 5) {
+              bonusCarrotsThisMatch += 15;
+            } else if (size >= 6) {
+              bonusCarrotsThisMatch += 30;
+            }
+          });
+        }
+        
+        // Multiplier based on max group size
+        let comboSizeMultiplier = 1.0;
+        if (maxGroupSize === 4) comboSizeMultiplier = 1.5;
+        else if (maxGroupSize === 5) comboSizeMultiplier = 2.0;
+        else if (maxGroupSize >= 6) comboSizeMultiplier = 3.0;
+
         setScore(s => {
           let points = matchResult.matchedTiles.length * 10 * (currentCombo + 1);
           if (matchResult.specialSpawns.length > 0) points += 500;
+          
+          // Apply combo size multiplier
+          points = Math.floor(points * comboSizeMultiplier);
+          
           const newScore = s + points;
           setHighScore(hs => Math.max(hs, newScore));
           return newScore;
         });
+
+        if (bonusCarrotsThisMatch > 0) {
+          setLevelCarrots(prev => prev + bonusCarrotsThisMatch);
+          const label = maxGroupSize === 4 ? "4-IN-A-ROW!" : maxGroupSize === 5 ? "5-IN-A-ROW!" : "MEGA MATCH!";
+          setComboPopup({
+            text: label,
+            carrots: bonusCarrotsThisMatch,
+            multiplier: comboSizeMultiplier,
+            id: Math.random().toString()
+          });
+          
+          // Clear after 1.8 seconds
+          setTimeout(() => {
+            setComboPopup(prev => prev && prev.carrots === bonusCarrotsThisMatch ? null : prev);
+          }, 1800);
+        }
 
         audio.playMatch(currentCombo);
         // Apply effects of matches
@@ -462,6 +512,9 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     princeAttacks,
     isAiLoading,
     isAiGenerated,
-    timeLeft
+    timeLeft,
+    levelCarrots,
+    comboPopup,
+    setComboPopup
   };
 };

@@ -17,7 +17,7 @@ interface GameScreenProps {
   onClearTiles?: (counts: Record<number, number>) => void;
 }
 
-const SlotMachine = ({ onComplete }: { onComplete: (carrots: number) => void }) => {
+const SlotMachine = ({ onComplete, levelCarrots = 0 }: { onComplete: (carrots: number) => void; levelCarrots?: number }) => {
   const [spinning, setSpinning] = useState(false);
   const [results, setResults] = useState<string[]>(['🥕', '🥕', '🥕']);
   const [done, setDone] = useState(false);
@@ -103,13 +103,18 @@ const SlotMachine = ({ onComplete }: { onComplete: (carrots: number) => void }) 
           </button>
         ) : (
           <div className="animate-bounce">
-            <p className="text-2xl font-bold text-gray-700 mb-4">YOU WON</p>
-            <p className="text-4xl font-black text-yellow-600 mb-6">{getReward()} 🥕</p>
+            <p className="text-2xl font-bold text-gray-700 mb-2">YOU WON</p>
+            <p className="text-4xl font-black text-yellow-600 mb-2">{getReward()} 🥕</p>
+            {levelCarrots > 0 && (
+              <p className="text-sm font-bold text-emerald-600 mb-4 animate-pulse">
+                + {levelCarrots} Combo Bonus Carrots!
+              </p>
+            )}
             <button 
-              onClick={() => onComplete(getReward())}
+              onClick={() => onComplete(getReward() + levelCarrots)}
               className="w-full py-4 bg-green-500 text-white rounded-xl font-black text-xl border-b-4 border-green-700 active:border-b-0 active:translate-y-1"
             >
-              COLLECT
+              COLLECT {(getReward() + levelCarrots)} 🥕
             </button>
           </div>
         )}
@@ -119,7 +124,7 @@ const SlotMachine = ({ onComplete }: { onComplete: (carrots: number) => void }) 
 };
 
 export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades = { level: 1 }, onWin, onLose, onExit, onClearTiles }) => {
-  const { board, gameState, selectedPos, onTileClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft } = useGame({
+  const { board, gameState, selectedPos, onTileClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft, levelCarrots, comboPopup } = useGame({
     initialLevel,
     upgrades,
     onWin,
@@ -291,6 +296,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
                <span className="text-orange-400">{highScore.toLocaleString()}</span>
             </div>
           )}
+          {levelCarrots > 0 && (
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-emerald-950/90 text-emerald-300 px-3 py-1 rounded-full text-xs font-black border border-emerald-500/30 shadow-lg flex items-center gap-1.5"
+            >
+               <span>🥕</span>
+               <span className="text-emerald-400">+{levelCarrots}</span>
+            </motion.div>
+          )}
         </div>
         <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black border shadow-lg flex items-center gap-1.5 transition-all duration-300 select-none ${
           isAiLoading 
@@ -391,7 +406,29 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
           )}
         </div>
 
-        <div className="px-4 flex-none flex justify-center">
+        <div className="px-4 flex-none flex justify-center relative">
+          <AnimatePresence>
+            {comboPopup && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.5, y: 30 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: -40 }}
+                transition={{ type: "spring", damping: 12, stiffness: 200 }}
+                className="absolute left-1/2 -translate-x-1/2 top-[10%] z-[120] pointer-events-none flex flex-col items-center bg-gradient-to-r from-yellow-500/95 via-amber-500/95 to-yellow-600/95 border-4 border-yellow-300 text-white font-black px-6 py-3 rounded-2xl shadow-[0_15px_30px_rgba(245,158,11,0.6)] whitespace-nowrap"
+              >
+                <div className="text-[10px] uppercase tracking-widest text-yellow-100 mb-0.5 font-black">🔥 COMBO MULTIPLIER! 🔥</div>
+                <div className="text-xl text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] font-black">{comboPopup.text}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="bg-white/20 px-2 py-0.5 rounded-md text-[10px] font-black text-yellow-50">
+                    {comboPopup.multiplier}x SCORE
+                  </span>
+                  <span className="text-yellow-200 text-sm font-black flex items-center animate-bounce">
+                    +{comboPopup.carrots} 🥕
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <Board 
             board={board} 
             selectedPos={selectedPos}
@@ -404,7 +441,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
       
       <AnimatePresence>
         {gameState === 'SLOT_MACHINE' && (
-          <SlotMachine onComplete={(rewardCarrots) => proceedToNextLevel(rewardCarrots)} />
+          <SlotMachine levelCarrots={levelCarrots} onComplete={(rewardCarrots) => proceedToNextLevel(rewardCarrots)} />
         )}
       </AnimatePresence>
       

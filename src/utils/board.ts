@@ -67,6 +67,7 @@ export interface MatchResult {
   matchedTiles: Tile[];
   counts: Record<TileType, number>;
   specialSpawns: SpecialSpawn[];
+  matchGroups: { tiles: Tile[], type: TileType }[];
 }
 
 export const findMatches = (board: Tile[]): MatchResult => {
@@ -196,62 +197,65 @@ export const findMatches = (board: Tile[]): MatchResult => {
     }
   });
 
-  return { matchedTiles, counts, specialSpawns };
+  return { matchedTiles, counts, specialSpawns, matchGroups };
 };
 
 export const applyGravity = (board: Tile[]): Tile[] => {
-  const newBoard = [...board];
+  const result: Tile[] = [];
   
   for (let c = 0; c < GRID_COLS; c++) {
-    let emptyRow = GRID_ROWS - 1;
-    for (let r = GRID_ROWS - 1; r >= 0; r--) {
-      const tileIdx = newBoard.findIndex(t => t.r === r && t.c === c);
-      if (tileIdx !== -1) {
-        const tile = newBoard[tileIdx];
-        if (tile.type !== TileType.EMPTY) {
-          if (r !== emptyRow) {
-            newBoard[tileIdx] = { ...tile, r: emptyRow };
-          }
-          emptyRow--;
-        } else {
-          // Remove empty tiles so they can be replaced
-          newBoard.splice(tileIdx, 1);
-        }
-      }
-    }
-  }
-  
-  return newBoard;
-};
-
-export const fillEmptySpaces = (board: Tile[]): Tile[] => {
-  const newBoard = [...board];
-  for (let c = 0; c < GRID_COLS; c++) {
-    // Count how many tiles are in this column
-    const tilesInCol = newBoard.filter(t => t.c === c && t.type !== TileType.EMPTY).length;
-    const missing = GRID_ROWS - tilesInCol;
-    for (let i = 0; i < missing; i++) {
-      newBoard.push({
-        id: generateId(),
-        type: getRandomTileType(),
-        r: i, // Will animate falling to proper empty space, actually better to start above
-        c: c
+    // Filter to get only non-empty tiles in this column
+    const colTiles = board
+      .filter(t => t.c === c && t.type !== TileType.EMPTY)
+      // Sort them by r ascending to preserve top-to-bottom order
+      .sort((a, b) => a.r - b.r);
+      
+    const K = colTiles.length;
+    // Assign them to the bottom-most rows: (GRID_ROWS - K) to (GRID_ROWS - 1)
+    for (let i = 0; i < K; i++) {
+      const targetRow = GRID_ROWS - K + i;
+      result.push({
+        ...colTiles[i],
+        r: targetRow
       });
     }
   }
   
-  // Re-adjust rows so they are completely sorted top-to-bottom
-  // The gravity function already pushed everything down, so new tiles should be 0 to missing-1
+  return result;
+};
+
+export const fillEmptySpaces = (board: Tile[]): Tile[] => {
+  const result: Tile[] = [];
+  
   for (let c = 0; c < GRID_COLS; c++) {
-    const colTiles = newBoard.filter(t => t.c === c).sort((a, b) => a.r - b.r);
-    for (let r = 0; r < GRID_ROWS; r++) {
-      const tile = colTiles[r];
-      if (tile) {
-        tile.r = r;
-      }
+    // Get all existing non-empty tiles in this column
+    const existingColTiles = board
+      .filter(t => t.c === c && t.type !== TileType.EMPTY)
+      .sort((a, b) => a.r - b.r);
+      
+    const K = existingColTiles.length;
+    const missing = GRID_ROWS - K;
+    
+    // Add missing tiles at the top (rows 0 to missing-1)
+    for (let r = 0; r < missing; r++) {
+      result.push({
+        id: generateId(),
+        type: getRandomTileType(),
+        r,
+        c
+      });
+    }
+    
+    // Add existing tiles (rows missing to GRID_ROWS-1)
+    for (let i = 0; i < K; i++) {
+      result.push({
+        ...existingColTiles[i],
+        r: missing + i
+      });
     }
   }
-  return newBoard;
+  
+  return result;
 };
 
 export const swapTiles = (board: Tile[], pos1: Position, pos2: Position): Tile[] => {

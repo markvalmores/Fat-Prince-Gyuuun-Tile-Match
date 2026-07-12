@@ -14,6 +14,7 @@ interface GameScreenProps {
   onWin: (level: number, carrots: number) => void;
   onLose: (level: number) => void;
   onExit: () => void;
+  onClearTiles?: (counts: Record<number, number>) => void;
 }
 
 const SlotMachine = ({ onComplete }: { onComplete: (carrots: number) => void }) => {
@@ -70,8 +71,19 @@ const SlotMachine = ({ onComplete }: { onComplete: (carrots: number) => void }) 
   };
 
   return (
-    <div className="absolute inset-0 z-[150] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-yellow-100 p-8 rounded-3xl max-w-sm w-full text-center border-8 border-yellow-400">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-[150] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+    >
+      <motion.div 
+        initial={{ scale: 0.7, y: 50, rotate: -3 }}
+        animate={{ scale: 1, y: 0, rotate: 0 }}
+        exit={{ scale: 0.7, y: 50, rotate: 3 }}
+        transition={{ type: 'spring', damping: 15, stiffness: 180 }}
+        className="bg-yellow-100 p-8 rounded-3xl max-w-sm w-full text-center border-8 border-yellow-400 shadow-[0_20px_50px_rgba(234,179,8,0.35)]"
+      >
         <h2 className="text-3xl font-black text-yellow-600 mb-6">BONUS ROULETTE</h2>
         <div className="flex justify-center gap-4 mb-8">
           {results.map((r, i) => (
@@ -101,17 +113,18 @@ const SlotMachine = ({ onComplete }: { onComplete: (carrots: number) => void }) 
             </button>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
-export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades = { level: 1 }, onWin, onLose, onExit }) => {
+export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades = { level: 1 }, onWin, onLose, onExit, onClearTiles }) => {
   const { board, gameState, selectedPos, onTileClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft } = useGame({
     initialLevel,
     upgrades,
     onWin,
-    onLose
+    onLose,
+    onClearTiles
   });
   
   const [showTutorial, setShowTutorial] = useState(false);
@@ -389,9 +402,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
         </div>
       </div>
       
-      {gameState === 'SLOT_MACHINE' && (
-        <SlotMachine onComplete={(rewardCarrots) => proceedToNextLevel(rewardCarrots)} />
-      )}
+      <AnimatePresence>
+        {gameState === 'SLOT_MACHINE' && (
+          <SlotMachine onComplete={(rewardCarrots) => proceedToNextLevel(rewardCarrots)} />
+        )}
+      </AnimatePresence>
       
       {gameState === 'LOADING' && (
         <div className="absolute inset-0 z-[100] bg-black flex flex-col items-center justify-center">

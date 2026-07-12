@@ -40,19 +40,48 @@ class GameAudio {
 
   playMatch(combo: number) {
     this.init();
-    // Pitch increases with combo
     const baseFreq = 440; // A4
     const freq = baseFreq * Math.pow(1.059463094359, combo * 2); 
-    this.playTone(freq, 'sine', 0.3, 0.2);
-    setTimeout(() => this.playTone(freq * 1.25, 'sine', 0.4, 0.2), 100);
+    // Dual oscillators for a richer, juicy retro pop feel
+    this.playTone(freq, 'sine', 0.2, 0.15);
+    this.playTone(freq * 1.5, 'sine', 0.15, 0.08); // fifth harmonic
+    setTimeout(() => {
+      this.playTone(freq * 2, 'triangle', 0.25, 0.1); // octave up
+    }, 70);
   }
 
   playLevelComplete() {
     this.init();
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+    const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98]; // C major arpeggio
     notes.forEach((freq, i) => {
-      setTimeout(() => this.playTone(freq, 'square', 0.5, 0.1), i * 150);
+      setTimeout(() => {
+        this.playTone(freq, 'sine', 0.35, 0.12);
+        this.playTone(freq * 1.003, 'triangle', 0.3, 0.08);
+      }, i * 100);
     });
+    // Final chord
+    setTimeout(() => {
+      this.playTone(1046.50, 'sine', 0.8, 0.1);
+      this.playTone(1318.51, 'triangle', 0.8, 0.1);
+      this.playTone(1567.98, 'sine', 0.8, 0.1);
+    }, notes.length * 100);
+  }
+
+  playFeverActive() {
+    this.init();
+    // Fast ascending synth sweep for fever mode power-up
+    const baseNotes = [329.63, 392.00, 523.25, 659.25, 783.99, 1046.50]; // E4, G4, C5, E5, G5, C6
+    baseNotes.forEach((freq, i) => {
+      setTimeout(() => {
+        this.playTone(freq, 'sine', 0.25, 0.15);
+        this.playTone(freq * 1.005, 'triangle', 0.2, 0.1);
+      }, i * 80);
+    });
+    // Sub bass and high chime drop at the peak
+    setTimeout(() => {
+      this.playTone(130.81, 'triangle', 0.8, 0.25); // Deep sub
+      this.playTone(1567.98, 'sine', 0.6, 0.15); // High shimmer
+    }, 450);
   }
   
   playGameOver() {

@@ -1,8 +1,79 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /leaderboard/{document} {
-      allow read, write: if true;
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper to validate alphanumeric/dash/underscore IDs
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validation for Leaderboard entries
+    function isValidLeaderboardEntry(data) {
+      return data.keys().hasAll(['name', 'score', 'level', 'timestamp']) 
+        && data.keys().size() == 4
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 20
+        && data.score is int && data.score >= 0
+        && data.level is int && data.level >= 1
+        && data.timestamp == request.time;
+    }
+
+    // Validation for User Missions
+    function isValidUserMissions(data) {
+      return data.keys().hasAll([
+          'playerId', 'playerName', 'date', 
+          'clearedCakes', 'clearedSwords', 'winStreak', 
+          'claimedCakes', 'claimedSwords', 'claimedWinStreak', 
+          'updatedAt'
+        ]) 
+        && data.keys().size() == 10
+        && data.playerId is string && data.playerId.size() <= 128 && data.playerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.playerName is string && data.playerName.size() <= 20
+        && data.date is string && data.date.size() == 10 && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.clearedCakes is int && data.clearedCakes >= 0
+        && data.clearedSwords is int && data.clearedSwords >= 0
+        && data.winStreak is int && data.winStreak >= 0
+        && data.claimedCakes is bool
+        && data.claimedSwords is bool
+        && data.claimedWinStreak is bool
+        && data.updatedAt == request.time;
+    }
+
+    // Validation for User Profiles (Login Calendar + Occasion claims)
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+          'playerId', 'playerName', 'claimedLoginDays', 'claimedOccasions', 'updatedAt'
+        ])
+        && (data.keys().size() == 5 || (data.keys().size() == 6 && data.keys().hasAny(['birthday']) && data.birthday is string && data.birthday.size() <= 10))
+        && data.playerId is string && data.playerId.size() <= 128 && data.playerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.playerName is string && data.playerName.size() <= 20
+        && data.claimedLoginDays is list
+        && data.claimedOccasions is list
+        && data.updatedAt == request.time;
+    }
+
+    // Leaderboard collection rules
+    match /leaderboard/{entryId} {
+      allow read: if true;
+      allow create: if isValidId(entryId) && isValidLeaderboardEntry(request.resource.data);
+      allow update, delete: if false; // leaderboard entries are immutable
+    }
+
+    // User Missions rules
+    match /userMissions/{missionId} {
+      allow read: if true;
+      allow create, update: if isValidId(missionId) && isValidUserMissions(request.resource.data);
+      allow delete: if false; // missions should not be deleted by clients
+    }
+
+    // User Profiles rules
+    match /userProfiles/{profileId} {
+      allow read: if true;
+      allow create, update: if isValidId(profileId) && isValidUserProfile(request.resource.data);
+      allow delete: if false;
     }
   }
 }

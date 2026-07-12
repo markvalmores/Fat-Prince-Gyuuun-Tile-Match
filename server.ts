@@ -31,6 +31,47 @@ function getGeminiClient(): GoogleGenAI | null {
   return aiClient;
 }
 
+// Real-time active players presence tracking using Server-Sent Events
+let activeConnections: express.Response[] = [];
+
+app.get('/api/presence', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  activeConnections.push(res);
+  broadcastPresence();
+
+  req.on('close', () => {
+    activeConnections = activeConnections.filter(c => c !== res);
+    broadcastPresence();
+  });
+});
+
+function broadcastPresence() {
+  const count = Math.max(1, activeConnections.length);
+  const payload = JSON.stringify({ count });
+  activeConnections.forEach(conn => {
+    try {
+      conn.write(`data: ${payload}\n\n`);
+    } catch (e) {
+      // Silent error for closed connection
+    }
+  });
+}
+
+// Keep connections alive with standard 15s heartbeats and prevent timeouts
+setInterval(() => {
+  activeConnections.forEach(conn => {
+    try {
+      conn.write(`: ping\n\n`);
+    } catch (e) {
+      // Connection might be closed, handled by close event
+    }
+  });
+}, 15000);
+
 // Full-stack API to generate customized animal-themed level data
 app.post('/api/level-data', async (req, res) => {
   const { level } = req.body;

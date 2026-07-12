@@ -1,0 +1,149 @@
+{
+  "entities": {
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "High score entries submitted by players",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The player's Knight Name"
+        },
+        "score": {
+          "type": "integer",
+          "description": "The score achieved by the player"
+        },
+        "level": {
+          "type": "integer",
+          "description": "The final level reached"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The server-recorded time of submission"
+        }
+      },
+      "required": ["name", "score", "level"]
+    },
+    "UserMissions": {
+      "title": "UserMissions",
+      "description": "Daily mission progress for a specific player on a given date",
+      "type": "object",
+      "properties": {
+        "playerId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "The unique device ID of the player"
+        },
+        "playerName": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The current Knight Name"
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "The date of the daily mission (YYYY-MM-DD)"
+        },
+        "clearedCakes": {
+          "type": "integer",
+          "description": "Number of Cake tiles cleared today"
+        },
+        "clearedSwords": {
+          "type": "integer",
+          "description": "Number of Sword tiles cleared today"
+        },
+        "winStreak": {
+          "type": "integer",
+          "description": "Current consecutive win streak"
+        },
+        "claimedCakes": {
+          "type": "boolean",
+          "description": "Whether the Cake mission rewards have been claimed"
+        },
+        "claimedSwords": {
+          "type": "boolean",
+          "description": "Whether the Sword mission rewards have been claimed"
+        },
+        "claimedWinStreak": {
+          "type": "boolean",
+          "description": "Whether the Win Streak mission rewards have been claimed"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the last progress update"
+        }
+      },
+      "required": [
+        "playerId",
+        "playerName",
+        "date",
+        "clearedCakes",
+        "clearedSwords",
+        "winStreak",
+        "claimedCakes",
+        "claimedSwords",
+        "claimedWinStreak"
+      ]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "General profile and calendar progress for a player",
+      "type": "object",
+      "properties": {
+        "playerId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "The unique ID of the player"
+        },
+        "playerName": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The current Knight Name"
+        },
+        "claimedLoginDays": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of dates (YYYY-MM-DD) on which daily login rewards were claimed"
+        },
+        "claimedOccasions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of occasion IDs (e.g. 'christmas_2026') that have been claimed"
+        },
+        "birthday": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "The player's birthday (YYYY-MM-DD)"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the last profile update"
+        }
+      },
+      "required": [
+        "playerId",
+        "playerName",
+        "claimedLoginDays",
+        "claimedOccasions"
+      ]
+    }
+  },
+  "firestore": {
+    "/leaderboard/{entryId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Public leaderboard of high scores"
+    },
+    "/userMissions/{missionId}": {
+      "schema": "UserMissions",
+      "description": "User specific daily mission tracking"
+    },
+    "/userProfiles/{profileId}": {
+      "schema": "UserProfile",
+      "description": "User specific profile and daily calendar/occasion claims"
+    }
+  }
+}

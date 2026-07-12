@@ -6,8 +6,8 @@ import { audio } from './audio';
 
 type GameState = 'IDLE' | 'SWAPPING' | 'MATCHING' | 'FALLING' | 'REFILLING' | 'GAME_OVER' | 'LEVEL_COMPLETE' | 'SLOT_MACHINE' | 'LOADING';
 
-export const useGame = (options: { initialLevel?: number, upgrades?: { level: number }, onWin?: (level: number, carrots: number) => void, onLose?: (level: number) => void } = {}) => {
-  const { initialLevel = 1, upgrades = { level: 1 }, onWin, onLose } = options;
+export const useGame = (options: { initialLevel?: number, upgrades?: { level: number }, onWin?: (level: number, carrots: number) => void, onLose?: (level: number) => void, onClearTiles?: (counts: Record<TileType, number>) => void } = {}) => {
+  const { initialLevel = 1, upgrades = { level: 1 }, onWin, onLose, onClearTiles } = options;
   const [board, setBoard] = useState<Tile[]>([]);
   const [gameState, setGameState] = useState<GameState>('IDLE');
   const [selectedPos, setSelectedPos] = useState<Position | null>(null);
@@ -130,6 +130,9 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
 
   const handleCombat = useCallback((counts: Record<TileType, number>) => {
     setRecentAttacks(counts);
+    if (onClearTiles) {
+      onClearTiles(counts);
+    }
     setTimeout(() => {
       setRecentAttacks({
         [TileType.EMPTY]: 0, [TileType.SWORD]: 0, [TileType.GUN]: 0, 
@@ -145,6 +148,9 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
       newFever += counts[TileType.CAKE] * 20; // Increase fever strictly from Cakes
       if (newFever >= 100) {
         newFever = 100;
+        if (currentFever < 100) {
+          audio.playFeverActive();
+        }
         princeIsAttacking = true;
         setPrinceAttacks(true);
         setTimeout(() => {

@@ -85,11 +85,11 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   }, [initialLevel]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isAiGenerated, setIsAiGenerated] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(initialLevel % 10 === 0 ? 180 : 90);
+  const [timeLeft, setTimeLeft] = useState(initialLevel % 10 === 0 ? 428 : 214);
   
   // Update timeLeft when level changes
   useEffect(() => {
-    setTimeLeft(level % 10 === 0 ? 180 : 90);
+    setTimeLeft(level % 10 === 0 ? 428 : 214);
   }, [level, retryTrigger]);
 
   // Handle Level Survival Timer Countdown
@@ -356,12 +356,22 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         setGameState('IDLE');
         return;
       } else {
-        // ALL WAVES CLEARED - WIN!
-        setGameState('LEVEL_COMPLETE');
-        audio.playLevelComplete();
-        setTimeout(() => {
-          setGameState('SLOT_MACHINE');
-        }, 1500);
+        // All waves cleared but level survival timer is still running!
+        // To keep the player fighting, loop back to Wave 0 with scaled-up enemy stats
+        setWave(0);
+        const loopCount = Math.floor(Math.random() * 3) + 1;
+        const scaledWaves = data.waves.map((waveEnemies: any) => 
+          waveEnemies.map((enemy: any) => ({
+            ...enemy,
+            id: `${enemy.id}_loop_${Date.now()}_${Math.random()}`,
+            hp: Math.floor(enemy.maxHp * (1.2 + 0.15 * loopCount)),
+            maxHp: Math.floor(enemy.maxHp * (1.2 + 0.15 * loopCount)),
+            attack: Math.floor(enemy.attack * (1.1 + 0.05 * loopCount)),
+            name: `🌟 ${enemy.name || 'Critter'} II`
+          }))
+        );
+        setEnemies(scaledWaves[0]);
+        setGameState('IDLE');
         return;
       }
     }

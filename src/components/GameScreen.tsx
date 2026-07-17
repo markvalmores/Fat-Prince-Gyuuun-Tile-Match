@@ -237,8 +237,21 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
   
   useEffect(() => {
     const handleResize = () => {
-      const maxWidth = Math.min(window.innerWidth - 32, 450); 
-      setBoardWidth(maxWidth);
+      // Use more of the screen width on mobile, but cap it for larger devices
+      const availableWidth = window.innerWidth;
+      const availableHeight = window.innerHeight;
+      
+      // Calculate a width that fits both width and height constraints
+      // On very short screens, we might need to shrink the board to see the battle scene
+      let targetWidth = Math.min(availableWidth - 20, 500);
+      
+      // If the board would take up more than 50% of vertical space, shrink it
+      const estimatedBoardHeight = targetWidth * (GRID_ROWS / GRID_COLS);
+      if (estimatedBoardHeight > availableHeight * 0.55) {
+        targetWidth = (availableHeight * 0.55) * (GRID_COLS / GRID_ROWS);
+      }
+
+      setBoardWidth(targetWidth);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -376,20 +389,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
         </div>
       </div>
 
-      <div className="w-full max-w-md flex flex-col h-[100dvh] pb-8 pt-2">
-        <BattleScene 
-          characters={characters} 
-          enemies={enemies} 
-          level={level}
-          wave={wave}
-          recentAttacks={recentAttacks}
-          fever={fever}
-          princeAttacks={princeAttacks}
-          bossRequiredTypes={bossRequiredTypes}
-        />
+      <div className="w-full flex flex-col h-[100dvh] overflow-hidden select-none">
+        <div className="flex-1 flex flex-col min-h-0 relative">
+          <BattleScene 
+            characters={characters} 
+            enemies={enemies} 
+            level={level}
+            wave={wave}
+            recentAttacks={recentAttacks}
+            fever={fever}
+            princeAttacks={princeAttacks}
+            bossRequiredTypes={bossRequiredTypes}
+          />
+        </div>
         
         {/* Fever Progress Bar with special glow animation */}
-        <div className="px-4 py-2 flex flex-col gap-1.5 w-full select-none relative">
+        <div className="px-4 py-2 flex flex-col gap-1 w-full select-none relative bg-gray-950/40 backdrop-blur-sm">
           <style dangerouslySetInnerHTML={{__html: `
             @keyframes moveStripes {
               0% { background-position: 0 0; }
@@ -464,7 +479,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
           )}
         </div>
 
-        <div className="px-4 flex-none flex justify-center relative">
+        <div className="px-2 flex-none flex justify-center relative py-2 bg-gray-950/20">
           <AnimatePresence>
             {comboPopup && (
               <motion.div 
@@ -498,14 +513,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
           />
         </div>
 
-        {/* Lower Bottom Action Buttons */}
-        <div className="mt-auto px-4 pt-3 pb-3 flex gap-3 justify-center items-center">
+        {/* Lower Bottom Action Buttons - Compact */}
+        <div className="flex-none px-4 py-2 flex gap-2 justify-center items-center bg-gray-950">
           <button 
             onClick={() => {
               triggerHaptic('medium');
               setIsPaused(true);
             }}
-            className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black text-xs border border-white/20 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+            className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-black text-[10px] border border-white/10 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer uppercase tracking-tight"
           >
             ⏸️ PAUSE
           </button>
@@ -514,7 +529,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
               triggerHaptic('medium');
               setIsPaused(true);
             }}
-            className="flex-1 py-2.5 bg-red-950/80 hover:bg-red-900/90 text-white rounded-xl font-black text-xs border border-red-500/30 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+            className="flex-1 py-2 bg-red-950/80 hover:bg-red-900/90 text-white rounded-lg font-black text-[10px] border border-red-500/20 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer uppercase tracking-tight"
           >
             🚪 QUIT
           </button>

@@ -7,8 +7,10 @@ export enum TileType {
   CAKE = 5, // Princess special
   RAINBOW = 6, // Match 5 special
   HORIZONTAL_CLEARER = 7, // Match 4 special (renamed from ROW_CLEARER)
-  PLUS_CLEARER = 8, // New plus shape clearer
-  CROSS_CLEARER = 9, // New cross/X shape clearer
+  VERTICAL_CLEARER = 8, // New vertical line clearer
+  PLUS_CLEARER = 9, // New plus shape clearer
+  CROSS_CLEARER = 10, // New cross/X shape clearer
+  SMILEY_CLEARER = 11, // Match 5 in plus/T shape
 }
 
 export interface Position {

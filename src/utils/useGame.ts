@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Tile, TileType, Position, Character, Enemy } from '../types';
-import { createBoard, hasMatches, findMatches, swapTiles, fillEmptySpaces, applyGravity, findPossibleMove, getHorizontalClearTiles, getPlusClearTiles, getCrossClearTiles } from './board';
+import { createBoard, hasMatches, findMatches, swapTiles, fillEmptySpaces, applyGravity, findPossibleMove, getHorizontalClearTiles, getVerticalClearTiles, getPlusClearTiles, getCrossClearTiles } from './board';
 import { getLevelData, INITIAL_CHARACTERS } from './levels';
 import { audio } from './audio';
 import { triggerHaptic } from './haptics';
@@ -21,6 +21,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   const [comboPopup, setComboPopup] = useState<{ text: string, carrots: number, multiplier: number, id: string } | null>(null);
   
   const [matchTick, setMatchTick] = useState(0);
+  const [forcedMatchIds, setForcedMatchIds] = useState<string[]>([]);
   const [level, setLevel] = useState(initialLevel);
   const [bossRequiredTypes, setBossRequiredTypes] = useState<TileType[]>([]);
   const [wave, setWave] = useState(0);
@@ -213,7 +214,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   const [recentAttacks, setRecentAttacks] = useState<Record<TileType, number>>({
     [TileType.EMPTY]: 0, [TileType.SWORD]: 0, [TileType.GUN]: 0, 
     [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0,
-    [TileType.HORIZONTAL_CLEARER]: 0, [TileType.PLUS_CLEARER]: 0, [TileType.CROSS_CLEARER]: 0
+    [TileType.HORIZONTAL_CLEARER]: 0, [TileType.VERTICAL_CLEARER]: 0, [TileType.PLUS_CLEARER]: 0, [TileType.CROSS_CLEARER]: 0, [TileType.SMILEY_CLEARER]: 0
   });
 
   // Keep stateRef updated on every render
@@ -228,7 +229,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
       setRecentAttacks({
         [TileType.EMPTY]: 0, [TileType.SWORD]: 0, [TileType.GUN]: 0, 
         [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0,
-        [TileType.HORIZONTAL_CLEARER]: 0, [TileType.PLUS_CLEARER]: 0, [TileType.CROSS_CLEARER]: 0
+        [TileType.HORIZONTAL_CLEARER]: 0, [TileType.PLUS_CLEARER]: 0, [TileType.CROSS_CLEARER]: 0, [TileType.SMILEY_CLEARER]: 0
       });
     }, 600); // clear after animation
 
@@ -446,7 +447,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         const counts: Record<TileType, number> = {
           [TileType.EMPTY]: 0, [TileType.SWORD]: 0, [TileType.GUN]: 0, 
           [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0,
-          [TileType.HORIZONTAL_CLEARER]: 0, [TileType.PLUS_CLEARER]: 0, [TileType.CROSS_CLEARER]: 0
+          [TileType.HORIZONTAL_CLEARER]: 0, [TileType.PLUS_CLEARER]: 0, [TileType.CROSS_CLEARER]: 0, [TileType.SMILEY_CLEARER]: 0
         };
         currentBoard.forEach(t => {
            if (t.type in counts) counts[t.type as TileType]++;
@@ -474,7 +475,8 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         return;
       }
 
-      const matchResult = findMatches(currentBoard);
+      const matchResult = findMatches(currentBoard, forcedMatchIds);
+      setForcedMatchIds([]); // Clear after use
       if (matchResult.matchedTiles.length > 0) {
         setCombo(c => c + 1);
         if (currentCombo >= 1) {
@@ -638,8 +640,9 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
       const t2 = board.find(t => t.r === pos.r && t.c === pos.c);
       const isRainbowSwap = t1?.type === TileType.RAINBOW || t2?.type === TileType.RAINBOW;
       
-      const isSpecialSwap = (t1 && [TileType.HORIZONTAL_CLEARER, TileType.PLUS_CLEARER, TileType.CROSS_CLEARER].includes(t1.type)) || 
-                          (t2 && [TileType.HORIZONTAL_CLEARER, TileType.PLUS_CLEARER, TileType.CROSS_CLEARER].includes(t2.type));
+      const specialTypes = [TileType.HORIZONTAL_CLEARER, TileType.VERTICAL_CLEARER, TileType.PLUS_CLEARER, TileType.CROSS_CLEARER, TileType.SMILEY_CLEARER];
+      const isSpecialSwap = (t1 && specialTypes.includes(t1.type)) || 
+                          (t2 && specialTypes.includes(t2.type));
 
       // Check if it resulted in a match
       setTimeout(() => {
@@ -647,7 +650,12 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
           setRainbowTriggered(true);
           setGameState('MATCHING');
         } else if (isSpecialSwap) {
-          // Trigger special effects manually if no match but it's a special tile swap
+          // If a special tile was swapped, we FORCE it to activate
+          // even if no match-3 was formed.
+          const idsToForce = [];
+          if (t1 && specialTypes.includes(t1.type)) idsToForce.push(t1.id);
+          if (t2 && specialTypes.includes(t2.type)) idsToForce.push(t2.id);
+          setForcedMatchIds(idsToForce);
           setGameState('MATCHING');
           setMatchTick(t => t + 1);
         } else if (hasMatches(swappedBoard)) {
@@ -671,47 +679,15 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     if (isPaused) return;
     if (gameState !== 'IDLE') return;
 
-    // Check if it's a special tile (BOMB or ROW_CLEARER)
     const tile = board.find(t => t.r === pos.r && t.c === pos.c);
     if (!tile) return;
 
-    if (tile.type === TileType.BOMB) {
-        // Trigger BOMB effect
+    const specialTypes = [TileType.BOMB, TileType.HORIZONTAL_CLEARER, TileType.VERTICAL_CLEARER, TileType.PLUS_CLEARER, TileType.CROSS_CLEARER, TileType.SMILEY_CLEARER];
+    
+    if (specialTypes.includes(tile.type)) {
+        setForcedMatchIds([tile.id]);
         setGameState('MATCHING');
-        triggerHaptic('heavy');
-        updateBoard(prev => {
-            const updated = prev.map(t => {
-                if (Math.abs(t.r - pos.r) <= 1 && Math.abs(t.c - pos.c) <= 1) {
-                    return { ...t, type: TileType.EMPTY, isGlowing: false };
-                }
-                return t;
-            });
-            return fillEmptySpaces(updated);
-        });
-    } else if (tile.type === TileType.HORIZONTAL_CLEARER) {
-        setGameState('MATCHING');
-        triggerHaptic('heavy');
-        updateBoard(prev => {
-            const clearIds = new Set(getHorizontalClearTiles(pos, prev).map(t => t.id));
-            const updated = prev.map(t => clearIds.has(t.id) ? { ...t, type: TileType.EMPTY } : t);
-            return fillEmptySpaces(updated);
-        });
-    } else if (tile.type === TileType.PLUS_CLEARER) {
-        setGameState('MATCHING');
-        triggerHaptic('heavy');
-        updateBoard(prev => {
-            const clearIds = new Set(getPlusClearTiles(pos, prev).map(t => t.id));
-            const updated = prev.map(t => clearIds.has(t.id) ? { ...t, type: TileType.EMPTY } : t);
-            return fillEmptySpaces(updated);
-        });
-    } else if (tile.type === TileType.CROSS_CLEARER) {
-        setGameState('MATCHING');
-        triggerHaptic('heavy');
-        updateBoard(prev => {
-            const clearIds = new Set(getCrossClearTiles(pos, prev).map(t => t.id));
-            const updated = prev.map(t => clearIds.has(t.id) ? { ...t, type: TileType.EMPTY } : t);
-            return fillEmptySpaces(updated);
-        });
+        setMatchTick(t => t + 1);
     }
   };
 

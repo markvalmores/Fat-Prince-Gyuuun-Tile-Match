@@ -70,8 +70,8 @@ export interface MatchResult {
   matchGroups: { tiles: Tile[], type: TileType }[];
 }
 
-export const findMatches = (board: Tile[]): MatchResult => {
-  const matchedSet = new Set<string>();
+export const findMatches = (board: Tile[], forcedIds: string[] = []): MatchResult => {
+  const matchedSet = new Set<string>(forcedIds);
   const specialSpawns: SpecialSpawn[] = [];
   const counts: Record<TileType, number> = {
     [TileType.EMPTY]: 0,
@@ -82,8 +82,10 @@ export const findMatches = (board: Tile[]): MatchResult => {
     [TileType.CAKE]: 0,
     [TileType.RAINBOW]: 0,
     [TileType.HORIZONTAL_CLEARER]: 0,
+    [TileType.VERTICAL_CLEARER]: 0,
     [TileType.PLUS_CLEARER]: 0,
     [TileType.CROSS_CLEARER]: 0,
+    [TileType.SMILEY_CLEARER]: 0,
   };
 
   const getTile = (r: number, c: number) => board.find(t => t.r === r && t.c === c);
@@ -154,14 +156,40 @@ export const findMatches = (board: Tile[]): MatchResult => {
   }
 
   // Process match groups for special spawns (size 4 or 5+)
+  // Detect intersections for special spawns (T/L shapes or plus shapes)
+  const tileMatchesCount: Record<string, number> = {};
   for (const group of matchGroups) {
+    for (const t of group.tiles) {
+      tileMatchesCount[t.id] = (tileMatchesCount[t.id] || 0) + 1;
+    }
+  }
+
+  const intersections = Object.keys(tileMatchesCount).filter(id => tileMatchesCount[id] > 1);
+
+  for (const group of matchGroups) {
+    // If a group has an intersection and total unique tiles in intersecting groups is 5+
+    const groupIntersections = group.tiles.filter(t => intersections.includes(t.id));
+    
+    if (groupIntersections.length > 0) {
+      // It's part of a T/L/Plus shape
+      // We only want to spawn one special per complex match
+      const intersectionTile = groupIntersections[0];
+      // Check if we already planned a spawn here
+      if (!specialSpawns.some(s => s.r === intersectionTile.r && s.c === intersectionTile.c)) {
+        specialSpawns.push({ r: intersectionTile.r, c: intersectionTile.c, type: TileType.SMILEY_CLEARER });
+        continue; // Move to next group
+      }
+    }
+
     if (group.tiles.length === 4) {
       const spawnTile = group.tiles[1]; // middle-ish
       const rand = Math.random();
       let type: TileType;
-      if (rand < 0.33) {
+      if (rand < 0.25) {
         type = TileType.HORIZONTAL_CLEARER;
-      } else if (rand < 0.66) {
+      } else if (rand < 0.5) {
+        type = TileType.VERTICAL_CLEARER;
+      } else if (rand < 0.75) {
         type = TileType.PLUS_CLEARER;
       } else {
         type = TileType.CROSS_CLEARER;
@@ -204,6 +232,14 @@ export const findMatches = (board: Tile[]): MatchResult => {
             changed = true;
           }
         });
+      } else if (tile.type === TileType.VERTICAL_CLEARER) {
+        const colTiles = getVerticalClearTiles({ r: tile.r, c: tile.c }, board);
+        colTiles.forEach(t => {
+          if (!matchedSet.has(t.id)) {
+            matchedSet.add(t.id);
+            changed = true;
+          }
+        });
       } else if (tile.type === TileType.PLUS_CLEARER) {
         const plusTiles = getPlusClearTiles({ r: tile.r, c: tile.c }, board);
         plusTiles.forEach(t => {
@@ -219,6 +255,14 @@ export const findMatches = (board: Tile[]): MatchResult => {
             matchedSet.add(t.id);
             changed = true;
           }
+        });
+      } else if (tile.type === TileType.SMILEY_CLEARER) {
+        const nonEmpty = board.filter(t => t.type !== TileType.EMPTY && !matchedSet.has(t.id));
+        const countToClear = Math.floor(nonEmpty.length / 2);
+        const shuffled = [...nonEmpty].sort(() => Math.random() - 0.5);
+        shuffled.slice(0, countToClear).forEach(t => {
+          matchedSet.add(t.id);
+          changed = true;
         });
       }
     }
@@ -237,6 +281,10 @@ export const findMatches = (board: Tile[]): MatchResult => {
 
 export const getHorizontalClearTiles = (pos: Position, board: Tile[]): Tile[] => {
   return board.filter(t => t.r === pos.r);
+};
+
+export const getVerticalClearTiles = (pos: Position, board: Tile[]): Tile[] => {
+  return board.filter(t => t.c === pos.c);
 };
 
 export const getPlusClearTiles = (pos: Position, board: Tile[]): Tile[] => {

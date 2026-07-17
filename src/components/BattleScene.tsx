@@ -104,7 +104,7 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
 
   interface Projectile {
     id: string;
-    type: 'sword' | 'arrow' | 'bomb' | 'cake' | 'horizontal' | 'plus' | 'cross';
+    type: 'sword' | 'arrow' | 'bomb' | 'cake' | 'horizontal' | 'vertical' | 'plus' | 'cross' | 'smiley';
   }
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
 
@@ -169,14 +169,16 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
       if (recentAttacks[TileType.GUN] > 0) p.push({ id: Math.random().toString(), type: 'arrow' });
       if (recentAttacks[TileType.BOMB] > 0) p.push({ id: Math.random().toString(), type: 'bomb' });
       if (recentAttacks[TileType.HORIZONTAL_CLEARER] > 0) p.push({ id: Math.random().toString(), type: 'horizontal' });
+      if (recentAttacks[TileType.VERTICAL_CLEARER] > 0) p.push({ id: Math.random().toString(), type: 'vertical' });
       if (recentAttacks[TileType.PLUS_CLEARER] > 0) p.push({ id: Math.random().toString(), type: 'plus' });
       if (recentAttacks[TileType.CROSS_CLEARER] > 0) p.push({ id: Math.random().toString(), type: 'cross' });
+      if (recentAttacks[TileType.SMILEY_CLEARER] > 0) p.push({ id: Math.random().toString(), type: 'smiley' });
       
       if (p.length > 0) {
         setProjectiles(prev => [...prev, ...p]);
         setTimeout(() => {
           setProjectiles(prev => prev.filter(pr => !p.some(newP => newP.id === pr.id)));
-        }, 600); // clear projectiles after flight time
+        }, 600);
       }
     }
   }, [recentAttacks]);
@@ -384,16 +386,16 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
         </div>
 
         {/* Battle Entities */}
-        <div className="w-full flex-1 flex justify-between items-end pb-4 px-2 relative">
+        <div className="w-full flex-1 flex justify-between items-end pb-6 px-4 relative">
           
           {/* Projectiles */}
           <div className="absolute inset-0 pointer-events-none z-30">
             {projectiles.map(p => (
               <motion.div
                 key={p.id}
-                className="absolute top-1/2 left-[20%]"
+                className="absolute top-1/2 left-[15%]"
                 initial={{ x: 0, y: -20, scale: 0.5, rotate: p.type === 'arrow' ? 0 : 0 }}
-                animate={{ x: 200, y: 20, scale: 1.5, rotate: p.type === 'arrow' ? 45 : 360 }}
+                animate={{ x: window.innerWidth * 0.6, y: 20, scale: 2.0, rotate: p.type === 'arrow' ? 45 : 360 }}
                 transition={{ duration: 0.5, ease: "easeIn" }}
               >
                 {p.type === 'sword' && <div className="text-4xl filter drop-shadow-md">⚔️</div>}
@@ -401,14 +403,16 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
                 {p.type === 'bomb' && <div className="text-4xl filter drop-shadow-md">💣</div>}
                 {p.type === 'cake' && <div className="text-5xl filter drop-shadow-md">🎂</div>}
                 {p.type === 'horizontal' && <div className="text-4xl filter drop-shadow-md">↔️</div>}
+                {p.type === 'vertical' && <div className="text-4xl filter drop-shadow-md">↕️</div>}
                 {p.type === 'plus' && <div className="text-4xl filter drop-shadow-md">➕</div>}
                 {p.type === 'cross' && <div className="text-4xl filter drop-shadow-md">✖️</div>}
+                {p.type === 'smiley' && <div className="text-5xl filter drop-shadow-md">😊</div>}
               </motion.div>
             ))}
           </div>
 
           {/* Party (Left) */}
-          <div className="flex gap-4 items-end relative z-20">
+          <div className="flex gap-4 items-end relative z-20 scale-110 sm:scale-125 transform origin-bottom-left">
             {characters.map(char => {
               const vfxList = charVfx[char.id] || [];
               const isAttacking = attackingIds.has(char.id);
@@ -453,7 +457,7 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
           </div>
 
           {/* Enemies (Right) */}
-          <div className="flex gap-3 items-end flex-row-reverse relative z-10">
+          <div className="flex gap-3 items-end flex-row-reverse relative z-10 scale-110 sm:scale-125 transform origin-bottom-right">
             <AnimatePresence>
               {enemies.map((enemy, idx) => {
                 const vfxList = charVfx[enemy.id] || [];

@@ -19,8 +19,10 @@ const tileStyles = {
   [TileType.CAKE]: 'bg-blue-500 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
   [TileType.RAINBOW]: 'bg-gradient-to-br from-red-500 via-green-500 to-blue-500 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
   [TileType.HORIZONTAL_CLEARER]: 'bg-purple-600 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
+  [TileType.VERTICAL_CLEARER]: 'bg-indigo-600 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
   [TileType.PLUS_CLEARER]: 'bg-cyan-600 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
   [TileType.CROSS_CLEARER]: 'bg-emerald-600 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
+  [TileType.SMILEY_CLEARER]: 'bg-yellow-400 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
 };
 
 const tileIcons = {
@@ -32,8 +34,10 @@ const tileIcons = {
   [TileType.CAKE]: '🍰',
   [TileType.RAINBOW]: '🌈',
   [TileType.HORIZONTAL_CLEARER]: 'https://www.image2url.com/r2/default/images/1784321838325-c241a616-e954-4615-a1ea-641ad70a715e.jpg',
+  [TileType.VERTICAL_CLEARER]: '↕️',
   [TileType.PLUS_CLEARER]: '➕',
   [TileType.CROSS_CLEARER]: '✖️',
+  [TileType.SMILEY_CLEARER]: '😊',
 };
 
 export const TileComponent: React.FC<TileProps> = ({ tile, isSelected, isHinted, onClick, tileSize }) => {

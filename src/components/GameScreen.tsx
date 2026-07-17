@@ -237,20 +237,21 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
   
   useEffect(() => {
     const handleResize = () => {
-      // Use more of the screen width on mobile, but cap it for larger devices
+      // Reserve space for Battle Area (35%) and other UI
       const availableWidth = window.innerWidth;
       const availableHeight = window.innerHeight;
       
-      // Calculate a width that fits both width and height constraints
-      // On very short screens, we might need to shrink the board to see the battle scene
-      let targetWidth = Math.min(availableWidth - 20, 500);
+      // Calculate max available height for the board area (Interaction Area - Fever Bar - Buttons)
+      // Interaction area is 65% of screen height
+      const interactionAreaHeight = availableHeight * 0.65;
+      const reservedHeight = 120; // Fever bar + Buttons + Padding
+      const maxBoardHeight = interactionAreaHeight - reservedHeight;
       
-      // If the board would take up more than 50% of vertical space, shrink it
-      const estimatedBoardHeight = targetWidth * (GRID_ROWS / GRID_COLS);
-      if (estimatedBoardHeight > availableHeight * 0.55) {
-        targetWidth = (availableHeight * 0.55) * (GRID_COLS / GRID_ROWS);
-      }
+      // Board is 6 columns, 9 rows. Aspect ratio 6:9 (2:3)
+      const maxPossibleWidthByHeight = maxBoardHeight * (6 / 9);
+      const maxPossibleWidthByScreenWidth = availableWidth - 24;
 
+      const targetWidth = Math.min(maxPossibleWidthByHeight, maxPossibleWidthByScreenWidth, 480);
       setBoardWidth(targetWidth);
     };
     handleResize();
@@ -351,46 +352,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
         </div>
       )}
 
-
-
-      {/* Score Display */}
-      <div className="absolute top-2 left-2 z-50 flex flex-col gap-1.5 items-start">
-        <div className="flex gap-2">
-          <div className="bg-black/60 text-white px-3 py-1 rounded-full text-xs font-black border border-white/10 shadow-lg flex items-center gap-2">
-             <span className="text-gray-400">SCORE</span>
-             <span className="text-yellow-400">{score.toLocaleString()}</span>
-          </div>
-          {highScore > 0 && (
-            <div className="bg-black/60 text-white px-3 py-1 rounded-full text-xs font-black border border-white/10 shadow-lg flex items-center gap-2">
-               <span className="text-gray-400">HI</span>
-               <span className="text-orange-400">{highScore.toLocaleString()}</span>
-            </div>
-          )}
-          {levelCarrots > 0 && (
-            <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-emerald-950/90 text-emerald-300 px-3 py-1 rounded-full text-xs font-black border border-emerald-500/30 shadow-lg flex items-center gap-1.5"
-            >
-               <span>🥕</span>
-               <span className="text-emerald-400">+{levelCarrots}</span>
-            </motion.div>
-          )}
-        </div>
-        <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black border shadow-lg flex items-center gap-1.5 transition-all duration-300 select-none ${
-          isAiLoading 
-            ? "bg-purple-950/80 border-purple-500/50 text-purple-300"
-            : isAiGenerated
-              ? "bg-indigo-950/80 border-indigo-500/80 text-indigo-200 shadow-[0_0_8px_rgba(99,102,241,0.4)]"
-              : "bg-emerald-950/80 border-emerald-500/50 text-emerald-300"
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isAiLoading ? "bg-purple-400 animate-ping" : isAiGenerated ? "bg-indigo-400 animate-pulse" : "bg-emerald-400"}`} />
-          <span>{isAiLoading ? "AI GENERATING..." : isAiGenerated ? "GEMINI AI POWERED" : "PROCEDURAL ACTIVE"}</span>
-        </div>
-      </div>
-
-      <div className="w-full flex flex-col h-[100dvh] overflow-hidden select-none">
-        <div className="flex-1 flex flex-col min-h-0 relative">
+      <div className="w-full flex flex-col h-[100dvh] overflow-hidden select-none bg-slate-950">
+        {/* Battle Area - Guaranteed visibility */}
+        <div className="h-[38vh] min-h-[240px] w-full flex-none relative">
           <BattleScene 
             characters={characters} 
             enemies={enemies} 
@@ -400,139 +364,90 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
             fever={fever}
             princeAttacks={princeAttacks}
             bossRequiredTypes={bossRequiredTypes}
+            timeLeft={timeLeft}
+            score={score}
           />
         </div>
         
-        {/* Fever Progress Bar with special glow animation */}
-        <div className="px-4 py-2 flex flex-col gap-1 w-full select-none relative bg-gray-950/40 backdrop-blur-sm">
-          <style dangerouslySetInnerHTML={{__html: `
-            @keyframes moveStripes {
-              0% { background-position: 0 0; }
-              100% { background-position: 20px 20px; }
-            }
-            .animate-stripes {
-              animation: moveStripes 1s linear infinite;
-            }
-          `}} />
+        {/* Interaction Area */}
+        <div className="flex-1 flex flex-col min-h-0 bg-gray-950/60 backdrop-blur-sm relative border-t border-white/10">
           
-          <div className="flex justify-between items-center text-[10px] font-black tracking-widest uppercase">
-            <span className="text-purple-400">FEVER ENERGY</span>
-            <span className={fever >= 100 ? "text-yellow-400 animate-pulse font-black" : "text-pink-400 font-bold"}>
-              {fever >= 100 ? "PRINCE USAGYUUUN READY!" : `FEVER ${Math.floor(fever)}%`}
-            </span>
+          {/* Fever Bar - More compact */}
+          <div className="px-4 pt-4 pb-1 w-full">
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-[10px] font-black text-purple-400 tracking-[0.2em] uppercase">Fever Energy</span>
+              <span className="text-[10px] font-black text-purple-300">{fever.toFixed(0)}%</span>
+            </div>
+            <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden border border-white/10 shadow-inner relative">
+              <motion.div 
+                className="h-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-pink-500 relative"
+                initial={{ width: 0 }}
+                animate={{ width: `${fever}%` }}
+                transition={{ type: 'spring', stiffness: 40 }}
+              >
+                {fever >= 100 && (
+                  <motion.div 
+                    className="absolute inset-0 bg-white"
+                    animate={{ opacity: [0, 0.5, 0] }}
+                    transition={{ repeat: Infinity, duration: 0.8 }}
+                  />
+                )}
+              </motion.div>
+            </div>
           </div>
-          <div 
-            className={`relative w-full h-5 rounded-full bg-purple-950/85 border-2 overflow-hidden flex items-center transition-all duration-300 ${
-              fever >= 100 
-                ? "border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.9)] scale-[1.02]" 
-                : "border-purple-600 shadow-[0_0_8px_rgba(168,85,247,0.4)]"
-            }`}
-          >
-            {/* Animated active background pulse glow when full */}
-            {fever >= 100 && (
-              <div className="absolute inset-0 bg-yellow-400/25 animate-pulse pointer-events-none z-10" />
-            )}
-            
-            <motion.div 
-              className={`h-full bg-gradient-to-r relative ${
-                fever >= 100 
-                  ? "from-yellow-500 via-orange-500 to-yellow-300 animate-pulse" 
-                  : "from-purple-600 via-pink-500 to-indigo-500"
-              }`}
-              initial={{ width: 0 }}
-              animate={{ width: `${fever}%` }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+
+          <div className="flex-1 flex items-center justify-center p-2 relative overflow-hidden">
+            <AnimatePresence>
+              {comboPopup && (
+                <motion.div 
+                  key={comboPopup.id}
+                  className="absolute top-4 z-50 pointer-events-none flex flex-col items-center"
+                  initial={{ opacity: 0, y: 20, scale: 0.5 }}
+                  animate={{ opacity: 1, y: -20, scale: 1.2 }}
+                  exit={{ opacity: 0, y: -60, scale: 1.5 }}
+                >
+                  <div className="text-3xl font-black text-yellow-400 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] italic uppercase tracking-tighter">
+                    {comboPopup.text}
+                  </div>
+                  <div className="text-lg font-bold text-white drop-shadow-md">
+                    +{comboPopup.carrots} 🥕 (x{comboPopup.multiplier})
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <Board 
+              board={board} 
+              selectedPos={selectedPos}
+              cursorPos={cursorPos}
+              hintPositions={hintPositions}
+              onTileClick={handleTileClick}
+              onTileDoubleClick={handleTileDoubleClick}
+              width={boardWidth}
+            />
+          </div>
+
+          {/* Action Footer */}
+          <div className="flex-none px-4 py-3 flex gap-2 justify-center items-center bg-gray-950 border-t border-white/5 pb-[calc(12px+env(safe-area-inset-bottom))]">
+            <button 
+              onClick={() => {
+                triggerHaptic('medium');
+                setIsPaused(true);
+              }}
+              className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black text-[10px] border border-white/10 shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer uppercase tracking-wider"
             >
-              {/* Internal diagonal stripes moving animation */}
-              <div 
-                className="absolute inset-0 opacity-20 pointer-events-none animate-stripes"
-                style={{ 
-                  backgroundImage: 'linear-gradient(45deg, #fff 25%, transparent 25%, transparent 50%, #fff 50%, #fff 75%, transparent 75%, transparent)',
-                  backgroundSize: '20px 20px'
-                }}
-              />
-            </motion.div>
-
-            {/* Glowing crown/spark indicator on the slider thumb */}
-            {fever > 0 && fever < 100 && (
-              <motion.div 
-                className="absolute text-xs"
-                style={{ left: `calc(${fever}% - 10px)` }}
-                animate={{ y: [0, -2, 0] }}
-                transition={{ repeat: Infinity, duration: 1 }}
-              >
-                🥕
-              </motion.div>
-            )}
-
-            {fever >= 100 && (
-              <div className="absolute inset-0 flex justify-center items-center text-[10px] font-black text-white uppercase tracking-widest drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] z-20">
-                👑 CROWN UNLEASHED 👑
-              </div>
-            )}
+              ⏸️ PAUSE
+            </button>
+            <button 
+              onClick={() => {
+                triggerHaptic('medium');
+                setIsPaused(true);
+              }}
+              className="flex-1 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-200 rounded-xl font-black text-[10px] border border-red-500/20 shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer uppercase tracking-wider"
+            >
+              🚪 QUIT
+            </button>
           </div>
-        </div>
-
-        <div className="h-6 flex justify-center items-center mb-2">
-          {gameState === 'LEVEL_COMPLETE' && (
-            <span className="text-yellow-400 font-bold animate-pulse text-lg tracking-widest">VICTORY!</span>
-          )}
-        </div>
-
-        <div className="px-2 flex-none flex justify-center relative py-2 bg-gray-950/20">
-          <AnimatePresence>
-            {comboPopup && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.5, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: -40 }}
-                transition={{ type: "spring", damping: 12, stiffness: 200 }}
-                className="absolute left-1/2 -translate-x-1/2 top-[10%] z-[120] pointer-events-none flex flex-col items-center bg-gradient-to-r from-yellow-500/95 via-amber-500/95 to-yellow-600/95 border-4 border-yellow-300 text-white font-black px-6 py-3 rounded-2xl shadow-[0_15px_30px_rgba(245,158,11,0.6)] whitespace-nowrap"
-              >
-                <div className="text-[10px] uppercase tracking-widest text-yellow-100 mb-0.5 font-black">🔥 COMBO MULTIPLIER! 🔥</div>
-                <div className="text-xl text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] font-black">{comboPopup.text}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="bg-white/20 px-2 py-0.5 rounded-md text-[10px] font-black text-yellow-50">
-                    {comboPopup.multiplier}x SCORE
-                  </span>
-                  <span className="text-yellow-200 text-sm font-black flex items-center animate-bounce">
-                    +{comboPopup.carrots} 🥕
-                  </span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <Board 
-            board={board} 
-            selectedPos={selectedPos}
-            cursorPos={cursorPos}
-            hintPositions={hintPositions}
-            onTileClick={handleTileClick}
-            onTileDoubleClick={handleTileDoubleClick}
-            width={boardWidth}
-          />
-        </div>
-
-        {/* Lower Bottom Action Buttons - Compact */}
-        <div className="flex-none px-4 py-2 flex gap-2 justify-center items-center bg-gray-950">
-          <button 
-            onClick={() => {
-              triggerHaptic('medium');
-              setIsPaused(true);
-            }}
-            className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-black text-[10px] border border-white/10 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer uppercase tracking-tight"
-          >
-            ⏸️ PAUSE
-          </button>
-          <button 
-            onClick={() => {
-              triggerHaptic('medium');
-              setIsPaused(true);
-            }}
-            className="flex-1 py-2 bg-red-950/80 hover:bg-red-900/90 text-white rounded-lg font-black text-[10px] border border-red-500/20 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer uppercase tracking-tight"
-          >
-            🚪 QUIT
-          </button>
         </div>
       </div>
       

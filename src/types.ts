@@ -20,6 +20,7 @@ export interface Tile {
   r: number;
   c: number;
   isGlowing?: boolean;
+  lockType?: 'ice' | 'chains';
 }
 
 export interface Character {

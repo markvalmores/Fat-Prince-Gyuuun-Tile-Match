@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSettings } from './SettingsProvider';
 import { Leaderboard } from './Leaderboard';
+import { useParticles } from './ParticleSystem';
+import { useAudio } from './AudioProvider';
+import { subscribeToStarLeaderboard } from '../utils/firebase';
+import { triggerHaptic } from '../utils/haptics';
 import { 
   UserMissionsData,
   UserProfileData,
@@ -58,6 +62,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onSaveBirthday,
   activePlayerCount = 1
 }) => {
+  const { emit } = useParticles();
+  const { playSFX } = useAudio();
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const { graphicsQuality, setGraphicsQuality } = useSettings();
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('fatPrincePlayerName') || '');
@@ -79,6 +85,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [calendarMonth, setCalendarMonth] = useState(todayDateObj.getMonth() + 1); // 1-12
   const [selectedOccasion, setSelectedOccasion] = useState<Occasion | null>(null);
   const [celebrateOccasion, setCelebrateOccasion] = useState<{ name: string; carrots: number } | null>(null);
+  const [starEntries, setStarEntries] = useState<{name: string, stars: number}[]>([]);
+
+  // Star leaderboard subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToStarLeaderboard((entries) => {
+      setStarEntries(entries);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Birthday & Milestone states
   const [showBirthdayPrompt, setShowBirthdayPrompt] = useState(false);
@@ -125,6 +140,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             const alreadyClaimed = userProfileData.claimedOccasions.includes(claimId);
             if (!alreadyClaimed) {
               onClaimOccasion(claimId, 34876).then(() => {
+                emit(window.innerWidth / 2, window.innerHeight / 2);
+                playSFX('playClick');
                 setCelebrateOccasion({
                   name: `🎂 Happy Birthday! Prince Gyuuun celebrates you! 🎂`,
                   carrots: 34876
@@ -148,12 +165,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     });
   }, []);
 
+  const [device, setDevice] = useState('');
+
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+      setDevice('Mobile Device');
+    } else {
+      setDevice('Desktop');
+    }
+  }, []);
+
   const upgradeCost = 100 * upgrades.level;
   
   const handleUpgrade = () => {
     if (carrots >= upgradeCost && onSpendCarrots && onUpgrade) {
       onSpendCarrots(carrots - upgradeCost);
       onUpgrade({ level: upgrades.level + 1 });
+    }
+  };
+
+  const handleClaimMission = (missionKey: 'cakes' | 'swords' | 'winStreak', amount: number) => {
+    if (onClaimReward) {
+      emit(window.innerWidth / 2, window.innerHeight / 2);
+      playSFX('playClick');
+      onClaimReward(missionKey, amount);
     }
   };
 
@@ -316,6 +352,84 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             🏆 LEADERBOARDS
           </motion.button>
 
+          {/* Star Leaderboard */}
+          <div className="mt-4 w-full max-w-[240px] bg-black/45 backdrop-blur-md rounded-2xl p-4 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
+            <style dangerouslySetInnerHTML={{__html: `
+              @keyframes goldenShimmer {
+                0% { background-position: -200% 0; }
+                100% { background-position: 200% 0; }
+              }
+              .shimmer-gold {
+                background: linear-gradient(120deg, #eab308 10%, #fef08a 45%, #fef08a 55%, #eab308 90%);
+                background-size: 200% auto;
+                animation: goldenShimmer 3s linear infinite;
+              }
+              .shimmer-silver {
+                background: linear-gradient(120deg, #9ca3af 10%, #f3f4f6 45%, #f3f4f6 55%, #9ca3af 90%);
+                background-size: 200% auto;
+                animation: goldenShimmer 3.5s linear infinite;
+              }
+              .shimmer-bronze {
+                background: linear-gradient(120deg, #ca8a04 10%, #ffedd5 45%, #ffedd5 55%, #ca8a04 90%);
+                background-size: 200% auto;
+                animation: goldenShimmer 4s linear infinite;
+              }
+            `}} />
+            <h3 className="text-[11px] font-black text-yellow-300 uppercase tracking-widest mb-3 text-center drop-shadow">🏆 Top 10 Star Leaders 🏆</h3>
+            
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0 },
+                show: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.05 }
+                }
+              }}
+              initial="hidden"
+              animate="show"
+              className="space-y-1.5"
+            >
+              {starEntries.length === 0 ? (
+                  <p className="text-[10px] text-white/50 text-center font-bold py-2">No data yet</p>
+              ) : (
+                  starEntries.map((e, i) => {
+                    let itemStyle = "bg-white/5 text-white/90 border border-white/5";
+                    let rankBadge = "";
+                    
+                    if (i === 0) {
+                      itemStyle = "shimmer-gold text-yellow-950 font-black border-2 border-yellow-300 shadow-[0_0_10px_rgba(234,179,8,0.5)]";
+                      rankBadge = "🥇";
+                    } else if (i === 1) {
+                      itemStyle = "shimmer-silver text-slate-900 font-black border-2 border-slate-300 shadow-[0_0_8px_rgba(156,163,175,0.4)]";
+                      rankBadge = "🥈";
+                    } else if (i === 2) {
+                      itemStyle = "shimmer-bronze text-amber-950 font-black border-2 border-amber-600 shadow-[0_0_8px_rgba(202,138,4,0.3)]";
+                      rankBadge = "🥉";
+                    } else {
+                      rankBadge = `${i + 1}`;
+                    }
+
+                    return (
+                      <motion.div 
+                        key={i} 
+                        variants={{
+                          hidden: { opacity: 0, x: -15, scale: 0.95 },
+                          show: { opacity: 1, x: 0, scale: 1, transition: { type: 'spring', stiffness: 120, damping: 14 } }
+                        }}
+                        className={`flex justify-between items-center text-[10px] px-2.5 py-1.5 rounded-lg font-mono transition-transform duration-300 hover:scale-[1.02] ${itemStyle}`}
+                      >
+                        <span className="flex items-center gap-1 truncate max-w-[120px]">
+                          <span className="font-sans font-black mr-0.5">{rankBadge}</span>
+                          <span className="truncate font-sans font-extrabold">{e.name}</span>
+                        </span>
+                        <span className="font-black whitespace-nowrap">{e.stars} ⭐</span>
+                      </motion.div>
+                    );
+                  })
+              )}
+            </motion.div>
+          </div>
+
           {/* Daily Missions Button */}
           {(() => {
             const hasUnclaimedMissions = !!missionsData && (
@@ -429,6 +543,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           className="mt-6 text-xs text-white/60 font-black tracking-widest bg-black/30 px-4 py-1.5 rounded-full border border-white/5 uppercase"
         >
           Created by Usagyuun VTuber
+          <div className="mt-1 text-[8px] font-mono text-white/40">{device}</div>
         </motion.div>
       </div>
 
@@ -582,7 +697,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                               <span className="text-xs bg-gray-200 text-gray-500 px-3 py-1.5 rounded-full font-black border border-gray-300">CLAIMED ✓</span>
                             ) : isCompleted ? (
                               <button 
-                                onClick={() => onClaimReward && onClaimReward('cakes', MISSION_CAKES_REWARD)}
+                                onClick={() => handleClaimMission('cakes', MISSION_CAKES_REWARD)}
                                 className="text-xs bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-1.5 rounded-full font-black border-b-4 border-emerald-700 active:border-b-0 active:translate-y-1 transition-all animate-pulse"
                               >
                                 CLAIM
@@ -632,7 +747,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                               <span className="text-xs bg-gray-200 text-gray-500 px-3 py-1.5 rounded-full font-black border border-gray-300">CLAIMED ✓</span>
                             ) : isCompleted ? (
                               <button 
-                                onClick={() => onClaimReward && onClaimReward('swords', MISSION_SWORDS_REWARD)}
+                                onClick={() => handleClaimMission('swords', MISSION_SWORDS_REWARD)}
                                 className="text-xs bg-amber-500 hover:bg-amber-400 text-white px-4 py-1.5 rounded-full font-black border-b-4 border-amber-700 active:border-b-0 active:translate-y-1 transition-all animate-pulse"
                               >
                                 CLAIM
@@ -682,7 +797,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                               <span className="text-xs bg-gray-200 text-gray-500 px-3 py-1.5 rounded-full font-black border border-gray-300">CLAIMED ✓</span>
                             ) : isCompleted ? (
                               <button 
-                                onClick={() => onClaimReward && onClaimReward('winStreak', MISSION_WINSTREAK_REWARD)}
+                                onClick={() => handleClaimMission('winStreak', MISSION_WINSTREAK_REWARD)}
                                 className="text-xs bg-rose-500 hover:bg-rose-400 text-white px-4 py-1.5 rounded-full font-black border-b-4 border-rose-700 active:border-b-0 active:translate-y-1 transition-all animate-pulse"
                               >
                                 CLAIM
@@ -1085,6 +1200,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       onClick={() => {
                         if (isToday && !isClaimedLogin && onClaimLogin) {
                           onClaimLogin(dateStr, 200).then(() => {
+                            emit(window.innerWidth / 2, window.innerHeight / 2);
+                            playSFX('playClick');
                             setCelebrateOccasion({ name: "Daily Login claimed", carrots: 200 });
                           });
                         }
@@ -1137,6 +1254,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                           onClick={() => {
                             if (onClaimLogin) {
                               onClaimLogin(todayStr, 200).then(() => {
+                                emit(window.innerWidth / 2, window.innerHeight / 2);
+                                playSFX('playClick');
                                 setCelebrateOccasion({ name: "Daily Login claimed", carrots: 200 });
                               });
                             }
@@ -1220,6 +1339,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         const randomCarrots = Math.floor(min + Math.random() * (max - min + 1));
                         if (onClaimOccasion) {
                           onClaimOccasion(selectedOccasion.id, randomCarrots).then(() => {
+                            emit(window.innerWidth / 2, window.innerHeight / 2);
+                            playSFX('playClick');
                             setSelectedOccasion(null);
                             setCelebrateOccasion({ name: selectedOccasion.name, carrots: randomCarrots });
                           });

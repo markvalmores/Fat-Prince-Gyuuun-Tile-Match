@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../utils/useGame';
 import { useParticles } from './ParticleSystem';
+import { useAudio } from './AudioProvider';
 import { Board } from './Board';
 import { BattleScene } from './BattleScene';
 import { useGamepad } from '../utils/useGamepad';
 import { GRID_COLS, GRID_ROWS } from '../utils/board';
 import { Position } from '../types';
 import { HighScoreSubmit } from './HighScoreSubmit';
+import { triggerHaptic } from '../utils/haptics';
 
 interface GameScreenProps {
   initialLevel: number;
@@ -28,6 +30,7 @@ const SlotMachine = ({ onComplete, levelCarrots = 0 }: { onComplete: (carrots: n
   const spin = () => {
     if (spinning || done) return;
     setSpinning(true);
+    triggerHaptic('heavy');
     
     // Animate spinning
     let spins = 0;
@@ -112,7 +115,10 @@ const SlotMachine = ({ onComplete, levelCarrots = 0 }: { onComplete: (carrots: n
               </p>
             )}
             <button 
-              onClick={() => onComplete(getReward() + levelCarrots)}
+              onClick={() => {
+                triggerHaptic('success');
+                onComplete(getReward() + levelCarrots);
+              }}
               className="w-full py-4 bg-green-500 text-white rounded-xl font-black text-xl border-b-4 border-green-700 active:border-b-0 active:translate-y-1"
             >
               COLLECT {(getReward() + levelCarrots)} 🥕
@@ -125,7 +131,7 @@ const SlotMachine = ({ onComplete, levelCarrots = 0 }: { onComplete: (carrots: n
 };
 
 export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades = { level: 1 }, onWin, onLose, onExit, onClearTiles }) => {
-  const { board, gameState, selectedPos, onTileClick, onTileDoubleClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft, levelCarrots, comboPopup, isPaused, setIsPaused, retryLevel, hintPositions } = useGame({
+  const { board, gameState, selectedPos, onTileClick, onTileDoubleClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft, levelCarrots, comboPopup, isPaused, setIsPaused, retryLevel, hintPositions, combo, bossRequiredTypes } = useGame({
     initialLevel,
     upgrades,
     onWin,
@@ -134,6 +140,32 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
   });
 
   const { emit } = useParticles();
+  const { playSFX } = useAudio();
+  
+  useEffect(() => {
+    if (comboPopup) {
+       emit(window.innerWidth / 2, window.innerHeight / 2);
+    }
+  }, [comboPopup]);
+  
+  // FPS Counter
+  const [fps, setFPS] = useState(0);
+  useEffect(() => {
+    let frameCount = 0;
+    let lastTime = performance.now();
+    const tick = () => {
+      frameCount++;
+      const now = performance.now();
+      if (now - lastTime >= 1000) {
+        setFPS(Math.round(frameCount / ((now - lastTime) / 1000)));
+        frameCount = 0;
+        lastTime = now;
+      }
+      requestAnimationFrame(tick);
+    };
+    const rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   const handleTileClick = (pos: Position) => {
     onTileClick(pos);
@@ -253,6 +285,23 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
 
   return (
     <div className="min-h-screen bg-gray-950 flex justify-center overflow-hidden touch-none select-none font-sans relative">
+      {/* Subtle FPS Counter */}
+      <div className="fixed bottom-2 right-2 text-[10px] text-gray-600 font-mono opacity-40 z-[100]">
+        FPS: {fps}
+      </div>
+
+      {/* Combo Multiplier UI */}
+      {combo > 1 && (
+        <motion.div 
+          initial={{ scale: 0.5, opacity: 0 }} 
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.5, opacity: 0 }}
+          className="fixed top-1/4 left-1/2 -translate-x-1/2 text-4xl font-black text-yellow-400 drop-shadow-lg z-[100] pointer-events-none"
+        >
+          {combo}x COMBO!
+        </motion.div>
+      )}
+
       {/* Level Survival Timer HUD */}
       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center">
         <div className={`px-4 py-1.5 rounded-full border-2 text-center font-mono font-black flex flex-col items-center justify-center transition-all ${
@@ -336,6 +385,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
           recentAttacks={recentAttacks}
           fever={fever}
           princeAttacks={princeAttacks}
+          bossRequiredTypes={bossRequiredTypes}
         />
         
         {/* Fever Progress Bar with special glow animation */}
@@ -451,13 +501,19 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
         {/* Lower Bottom Action Buttons */}
         <div className="mt-auto px-4 pt-3 pb-3 flex gap-3 justify-center items-center">
           <button 
-            onClick={() => setIsPaused(true)}
+            onClick={() => {
+              triggerHaptic('medium');
+              setIsPaused(true);
+            }}
             className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black text-xs border border-white/20 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
           >
             ⏸️ PAUSE
           </button>
           <button 
-            onClick={() => setIsPaused(true)}
+            onClick={() => {
+              triggerHaptic('medium');
+              setIsPaused(true);
+            }}
             className="flex-1 py-2.5 bg-red-950/80 hover:bg-red-900/90 text-white rounded-xl font-black text-xs border border-red-500/30 shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
           >
             🚪 QUIT
@@ -525,19 +581,28 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
               {/* Actions Menu */}
               <div className="flex flex-col gap-3">
                 <button 
-                  onClick={() => setIsPaused(false)}
+                  onClick={() => {
+                    triggerHaptic('medium');
+                    setIsPaused(false);
+                  }}
                   className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-black text-base border-b-4 border-emerald-700 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider shadow-md"
                 >
                   ▶️ RESUME
                 </button>
                 <button 
-                  onClick={retryLevel}
+                  onClick={() => {
+                    triggerHaptic('medium');
+                    retryLevel();
+                  }}
                   className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-black text-base border-b-4 border-amber-700 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider shadow-md"
                 >
                   🔄 RETRY LEVEL
                 </button>
                 <button 
-                  onClick={onExit}
+                  onClick={() => {
+                    triggerHaptic('medium');
+                    onExit();
+                  }}
                   className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black text-base border-b-4 border-slate-950 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider shadow-md"
                 >
                   🚪 QUIT TO MAP

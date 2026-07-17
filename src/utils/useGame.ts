@@ -3,6 +3,7 @@ import { Tile, TileType, Position, Character, Enemy } from '../types';
 import { createBoard, hasMatches, findMatches, swapTiles, fillEmptySpaces, applyGravity, findPossibleMove } from './board';
 import { getLevelData, INITIAL_CHARACTERS } from './levels';
 import { audio } from './audio';
+import { triggerHaptic } from './haptics';
 
 type GameState = 'IDLE' | 'SWAPPING' | 'MATCHING' | 'FALLING' | 'REFILLING' | 'GAME_OVER' | 'LEVEL_COMPLETE' | 'SLOT_MACHINE' | 'LOADING';
 
@@ -20,10 +21,24 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   const [comboPopup, setComboPopup] = useState<{ text: string, carrots: number, multiplier: number, id: string } | null>(null);
   
   const [level, setLevel] = useState(initialLevel);
+  const [bossRequiredTypes, setBossRequiredTypes] = useState<TileType[]>([]);
   const [wave, setWave] = useState(0);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [characters, setCharacters] = useState<Character[]>(INITIAL_CHARACTERS);
   const [currentLevelData, setCurrentLevelData] = useState<any>(getLevelData(initialLevel));
+  const [isPaused, setIsPaused] = useState(false);
+
+  // Boss OST music loop trigger effect
+  useEffect(() => {
+    if (level % 10 === 0 && ['IDLE', 'SWAPPING', 'MATCHING', 'FALLING', 'REFILLING'].includes(gameState) && !isPaused) {
+      audio.startBossTheme();
+    } else {
+      audio.stopBossTheme();
+    }
+    return () => {
+      audio.stopBossTheme();
+    };
+  }, [level, gameState, isPaused]);
 
   const stateRef = useRef({ board, enemies, characters, level, wave, combo, fever, currentLevelData });
   stateRef.current = { board, enemies, characters, level, wave, combo, fever, currentLevelData };
@@ -36,7 +51,6 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     });
   };
 
-  const [isPaused, setIsPaused] = useState(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
   const [hintPositions, setHintPositions] = useState<Position[] | null>(null);
   const lastActivityTime = useRef(Date.now());
@@ -109,6 +123,16 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     setIsAiGenerated(false);
     setLevelCarrots(0);
     setComboPopup(null);
+
+    // Setup Boss requirements
+    if (level % 10 === 0) {
+      // Choose 2 distinct required types from 1 to 5 (SWORD, GUN, BOMB, HEART, CAKE)
+      const t1 = 1 + (level % 5);
+      const t2 = 1 + ((level + 2) % 5);
+      setBossRequiredTypes([t1, t2]);
+    } else {
+      setBossRequiredTypes([]);
+    }
     
     // Scale characters
     const hpMultiplier = Math.pow(1.04, level - 1);
@@ -125,6 +149,27 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     while(hasMatches(newBoard)) {
       newBoard = createBoard();
     }
+
+    // Apply random ice and chains locks if boss level
+    if (level % 10 === 0) {
+      let locksCount = 0;
+      const indices = Array.from({ length: newBoard.length }, (_, i) => i);
+      // Shuffle indices
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+      }
+      
+      const lockLimit = Math.min(6 + Math.floor(level / 10), 12); // slightly more locks for higher boss levels
+      for (let i = 0; i < indices.length && locksCount < lockLimit; i++) {
+        const idx = indices[i];
+        newBoard[idx].lockType = Math.random() > 0.5 ? 'ice' : 'chains';
+        locksCount++;
+      }
+    }
+
     updateBoard(newBoard);
     setGameState('IDLE');
 
@@ -211,9 +256,29 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     const dmgMultiplier = Math.pow(1.05, level - 1) * (1 + upgrades.level * 0.05);
     const healMultiplier = Math.pow(1.04, level - 1) * (1 + upgrades.level * 0.05);
     
-    const dmgWarrior = counts[TileType.SWORD] * 10 * dmgMultiplier;
-    const dmgRanger = counts[TileType.GUN] * 8 * dmgMultiplier;
-    const dmgBomb = counts[TileType.BOMB] * 15 * dmgMultiplier; // Splash damage
+    // Check if boss level and boss enemy exists
+    const isBossActive = level % 10 === 0 && stateRef.current.enemies.some(e => e.isBoss);
+    
+    let dmgWarrior = counts[TileType.SWORD] * 10 * dmgMultiplier;
+    let dmgRanger = counts[TileType.GUN] * 8 * dmgMultiplier;
+    let dmgBomb = counts[TileType.BOMB] * 15 * dmgMultiplier; // Splash damage
+    
+    let dmgHeartBonus = 0;
+    let dmgCakeBonus = 0;
+    
+    if (isBossActive && bossRequiredTypes.length > 0) {
+      if (!bossRequiredTypes.includes(TileType.SWORD)) dmgWarrior = 0;
+      if (!bossRequiredTypes.includes(TileType.GUN)) dmgRanger = 0;
+      if (!bossRequiredTypes.includes(TileType.BOMB)) dmgBomb = 0;
+      
+      if (bossRequiredTypes.includes(TileType.HEART)) {
+        dmgHeartBonus = counts[TileType.HEART] * 12 * dmgMultiplier;
+      }
+      if (bossRequiredTypes.includes(TileType.CAKE)) {
+        dmgCakeBonus = counts[TileType.CAKE] * 18 * dmgMultiplier;
+      }
+    }
+    
     // Apply dynamic heart healing based on exact match rules:
     // - 3 matches (3 heart tiles): 34% of max health
     // - 4 matches (4 heart tiles): 50% of max health
@@ -245,7 +310,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     // Apply damage to enemies
     setEnemies(prev => {
       let newEnemies = prev.map(e => ({...e}));
-      let totalDirectDamage = dmgWarrior + dmgRanger;
+      let totalDirectDamage = dmgWarrior + dmgRanger + dmgHeartBonus + dmgCakeBonus;
       
       // Bomb damages all
       const globalDamage = dmgBomb;
@@ -340,6 +405,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     if (newChars.every(c => c.dead)) {
       setGameState('GAME_OVER');
       audio.playGameOver();
+      triggerHaptic('error');
       setTimeout(() => {
         if (onLose) onLose(level);
       }, 1500);
@@ -379,6 +445,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
 
         audio.playMatch(currentCombo);
         handleCombat(counts);
+        triggerHaptic('heavy');
         updateBoard(prev => fillEmptySpaces(prev.map(t => ({ ...t, type: TileType.EMPTY, isGlowing: false }))));
         setRainbowTriggered(false);
         timeoutId = window.setTimeout(() => setGameState('IDLE'), 300);
@@ -388,6 +455,11 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
       const matchResult = findMatches(currentBoard);
       if (matchResult.matchedTiles.length > 0) {
         setCombo(c => c + 1);
+        if (currentCombo >= 1) {
+          triggerHaptic('combo');
+        } else {
+          triggerHaptic('medium');
+        }
         
         // Calculate max match group size and any bonus carrots
         let maxGroupSize = 3;
@@ -450,17 +522,37 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         // Remove matched tiles and instantly fall and refill in place!
         const matchedIds = new Set(matchResult.matchedTiles.map(t => t.id));
         updateBoard(prev => {
-           const updated = prev.map(t => matchedIds.has(t.id) ? { ...t, type: TileType.EMPTY, isGlowing: false } : t);
+           const matchedCoords = prev.filter(t => matchedIds.has(t.id)).map(t => ({ r: t.r, c: t.c }));
+           let unlockedAny = false;
+           
+           const updated = prev.map(t => {
+             if (t.lockType && !matchedIds.has(t.id)) {
+               const isAdjacent = matchedCoords.some(mc => Math.abs(t.r - mc.r) + Math.abs(t.c - mc.c) === 1);
+               if (isAdjacent) {
+                 unlockedAny = true;
+                 return { ...t, lockType: undefined };
+               }
+             }
+             return t;
+           });
+
+           if (unlockedAny) {
+             audio.playIceBreak();
+             triggerHaptic('medium');
+           }
+
+           const nextBoard = updated.map(t => matchedIds.has(t.id) ? { ...t, type: TileType.EMPTY, isGlowing: false } : t);
+           
            // Add special spawns
            if (matchResult.specialSpawns) {
              matchResult.specialSpawns.forEach(spawn => {
-               const tIdx = updated.findIndex(t => t.r === spawn.r && t.c === spawn.c);
+               const tIdx = nextBoard.findIndex(t => t.r === spawn.r && t.c === spawn.c);
                if (tIdx !== -1) {
-                 updated[tIdx] = { ...updated[tIdx], type: spawn.type, isGlowing: spawn.isGlowing };
+                 nextBoard[tIdx] = { ...nextBoard[tIdx], type: spawn.type, isGlowing: spawn.isGlowing };
                }
              });
            }
-           return fillEmptySpaces(updated);
+           return fillEmptySpaces(nextBoard);
         });
         
         timeoutId = window.setTimeout(() => {
@@ -488,8 +580,23 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     if (isPaused) return;
     if (gameState !== 'IDLE') return;
 
+    const clickedTile = board.find(t => t.r === pos.r && t.c === pos.c);
+    if (clickedTile?.lockType) {
+      audio.playError();
+      triggerHaptic('error');
+      setSelectedPos(null);
+      return;
+    }
+
     if (!selectedPos) {
       setSelectedPos(pos);
+      triggerHaptic('light');
+      return;
+    }
+
+    const selTile = board.find(t => t.r === selectedPos.r && t.c === selectedPos.c);
+    if (selTile?.lockType) {
+      setSelectedPos(null);
       return;
     }
 
@@ -500,6 +607,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     if (isAdjacent) {
       setGameState('SWAPPING');
       audio.playSwap();
+      triggerHaptic('medium');
       const swappedBoard = swapTiles(board, selectedPos, pos);
       updateBoard(swappedBoard);
       setSelectedPos(null);
@@ -520,10 +628,12 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
           updateBoard(board);
           setGameState('IDLE');
           audio.playError();
+          triggerHaptic('light');
         }
       }, 300);
     } else {
       setSelectedPos(pos);
+      triggerHaptic('light');
     }
   };
 
@@ -539,6 +649,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     if (tile.type === TileType.BOMB) {
         // Trigger BOMB effect
         setGameState('MATCHING');
+        triggerHaptic('heavy');
         updateBoard(prev => {
             const updated = prev.map(t => {
                 if (Math.abs(t.r - pos.r) <= 1 && Math.abs(t.c - pos.c) <= 1) {
@@ -551,6 +662,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     } else if (tile.type === TileType.ROW_CLEARER) {
         // Trigger ROW_CLEARER effect
         setGameState('MATCHING');
+        triggerHaptic('heavy');
         updateBoard(prev => {
             const updated = prev.map(t => {
                 if (t.r === pos.r) {
@@ -612,6 +724,8 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     isPaused,
     setIsPaused,
     retryLevel,
-    hintPositions
+    hintPositions,
+    combo,
+    bossRequiredTypes
   };
 };

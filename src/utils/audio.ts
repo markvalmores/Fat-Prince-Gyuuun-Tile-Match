@@ -97,9 +97,72 @@ class GameAudio {
     this.playTone(300, 'triangle', 0.1, 0.1);
   }
   
+  playClick() {
+    this.init();
+    this.playTone(600, 'square', 0.05, 0.05);
+  }
+  
   playError() {
     this.init();
     this.playTone(150, 'square', 0.2, 0.1);
+  }
+
+  playIceBreak() {
+    this.init();
+    this.playTone(1800, 'sine', 0.15, 0.12);
+    setTimeout(() => {
+      this.playTone(1400, 'triangle', 0.1, 0.08);
+      this.playTone(2200, 'sine', 0.08, 0.06);
+    }, 40);
+  }
+
+  private bossThemeInterval: any = null;
+  private bossThemeStep = 0;
+
+  startBossTheme() {
+    this.init();
+    if (this.bossThemeInterval) return;
+    
+    this.bossThemeStep = 0;
+    const stepDuration = 200; // Fast driving 150 BPM feel
+    
+    // Dark Boss Bassline
+    const bassline = [110.00, 110.00, 130.81, 110.00, 164.81, 110.00, 103.83, 130.81];
+    // Dark high lead synth melody (A Minor)
+    const melody = [
+      440.00, 0, 493.88, 523.25, 0, 587.33, 523.25, 493.88,
+      440.00, 440.00, 523.25, 659.25, 0, 587.33, 523.25, 493.88
+    ];
+
+    this.bossThemeInterval = setInterval(() => {
+      if (!this.ctx || !this.enabled) return;
+      
+      const bassFreq = bassline[this.bossThemeStep % bassline.length];
+      this.playTone(bassFreq, 'triangle', 0.18, 0.15);
+      this.playTone(bassFreq * 2, 'sine', 0.12, 0.06); 
+      
+      const melFreq = melody[this.bossThemeStep % melody.length];
+      if (melFreq > 0) {
+        this.playTone(melFreq, 'sawtooth', 0.15, 0.04);
+        this.playTone(melFreq * 1.5, 'sine', 0.1, 0.02); 
+      }
+      
+      if (this.bossThemeStep % 2 === 1) {
+        this.playTone(1200, 'square', 0.02, 0.015); 
+      }
+      if (this.bossThemeStep % 4 === 0) {
+        this.playTone(220, 'triangle', 0.08, 0.06);
+      }
+
+      this.bossThemeStep++;
+    }, stepDuration);
+  }
+
+  stopBossTheme() {
+    if (this.bossThemeInterval) {
+      clearInterval(this.bossThemeInterval);
+      this.bossThemeInterval = null;
+    }
   }
 }
 

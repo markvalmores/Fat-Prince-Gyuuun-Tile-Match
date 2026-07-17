@@ -28,6 +28,7 @@ export interface UserProfileData {
   claimedLoginDays: string[];
   claimedOccasions: string[];
   levelStars?: { [level: string]: number };
+  cumulativeStars?: number;
   birthday?: string;
   updatedAt: any;
 }
@@ -261,12 +262,15 @@ export async function saveUserProfile(
   const docPath = `userProfiles/${playerId}`;
   try {
     const docRef = doc(db, 'userProfiles', playerId);
+    const levelStars = data.levelStars || {};
+    const cumulativeStars = Object.values(levelStars).reduce((sum, stars) => sum + stars, 0);
     const payload: any = {
       playerId: data.playerId,
       playerName: playerName || data.playerName || 'Knight',
       claimedLoginDays: Array.isArray(data.claimedLoginDays) ? data.claimedLoginDays : [],
       claimedOccasions: Array.isArray(data.claimedOccasions) ? data.claimedOccasions : [],
-      levelStars: data.levelStars || {},
+      levelStars: levelStars,
+      cumulativeStars: cumulativeStars,
       updatedAt: serverTimestamp()
     };
     if (data.birthday) {

@@ -13,6 +13,7 @@ interface BattleProps {
   recentAttacks?: Record<TileType, number>;
   fever?: number;
   princeAttacks?: boolean;
+  bossRequiredTypes?: TileType[];
 }
 
 const HeartHP = ({ hp, maxHp }: { hp: number; maxHp: number }) => {
@@ -40,7 +41,7 @@ const charToBunnyType: Record<string, BunnyType> = {
   princess: 'princess'
 };
 
-export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level, wave, recentAttacks, fever = 0, princeAttacks = false }) => {
+export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level, wave, recentAttacks, fever = 0, princeAttacks = false, bossRequiredTypes = [] }) => {
   const prevCharsRef = useRef(characters);
   const prevEnemiesRef = useRef(enemies);
   const [charVfx, setCharVfx] = useState<Record<string, VfxEffect[]>>({});
@@ -177,19 +178,80 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
     }
   }, [recentAttacks]);
 
+  const bossEnemy = enemies.find(e => e.isBoss);
+
   return (
     <div 
       className="flex-1 w-full flex flex-col relative overflow-hidden shadow-2xl rounded-b-2xl mb-4 border-b-4 transition-colors duration-1000"
       style={{ backgroundColor: theme.skyTop, borderColor: theme.ground }}
     >
       
-      {/* Fever Bar */}
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-64 h-6 bg-black/50 border-2 border-yellow-400 rounded-full overflow-hidden z-[100] shadow-[0_0_10px_rgba(250,204,21,0.5)] flex items-center justify-center">
-        <div className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-orange-500 to-yellow-400 transition-all duration-300" style={{ width: `${fever}%` }} />
-        <span className="relative text-[10px] font-black text-white tracking-widest drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] z-10 uppercase">
-          {fever! >= 100 ? 'USAGYUUUN READY!' : `FEVER ${Math.floor(fever || 0)}%`}
-        </span>
-      </div>
+      {/* Fever Bar / Boss HP Bar */}
+      {bossEnemy ? (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-[92%] bg-slate-950/95 border-2 border-red-500 rounded-xl p-2 z-[105] shadow-[0_0_15px_rgba(239,68,68,0.6)] flex flex-col gap-1 select-none pointer-events-none">
+          <div className="flex justify-between items-center px-1">
+            <span className="text-[10px] font-black text-red-400 uppercase tracking-widest animate-pulse flex items-center gap-1">
+              👑 BOSS: {bossEnemy.name || "DESTRUCTIVE TITAN"}
+            </span>
+            <span className="text-[9px] font-mono text-gray-400 font-black">
+              HP: {bossEnemy.hp} / {bossEnemy.maxHp}
+            </span>
+          </div>
+          
+          {/* Neon Boss HP Bar */}
+          <div className="w-full h-2 bg-red-950/80 rounded-full border border-red-900 overflow-hidden relative">
+            <motion.div 
+              className="h-full bg-gradient-to-r from-red-600 via-rose-500 to-red-500 shadow-[0_0_8px_#f43f5e]"
+              initial={{ width: '100%' }}
+              animate={{ width: `${(bossEnemy.hp / bossEnemy.maxHp) * 100}%` }}
+              transition={{ duration: 0.3 }}
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.15)_50%,rgba(255,255,255,0.15)_75%,transparent_75%,transparent)] bg-[length:15px_15px] pointer-events-none opacity-20" />
+          </div>
+
+          {/* Weakness Requirements */}
+          {bossRequiredTypes && bossRequiredTypes.length > 0 && (
+            <div className="flex justify-between items-center mt-0.5 bg-black/40 px-1.5 py-0.5 rounded border border-red-500/20">
+              <span className="text-[8px] font-black text-gray-300 tracking-wide">
+                🔥 MATCH TO BYPASS SHIELD:
+              </span>
+              <div className="flex gap-1.5 items-center">
+                {bossRequiredTypes.map(type => {
+                  const icons: Record<number, string> = {
+                    1: '⚔️ Sword',
+                    2: '🏹 Arrow',
+                    3: '💣 Bomb',
+                    4: '❤️ Heart',
+                    5: '🍰 Cake'
+                  };
+                  const colors: Record<number, string> = {
+                    1: 'bg-red-500/30 text-red-300 border-red-500/50',
+                    2: 'bg-yellow-500/30 text-yellow-300 border-yellow-500/50',
+                    3: 'bg-gray-700/30 text-gray-300 border-gray-500/50',
+                    4: 'bg-pink-500/30 text-pink-300 border-pink-500/50',
+                    5: 'bg-blue-500/30 text-blue-300 border-blue-500/50'
+                  };
+                  return (
+                    <span 
+                      key={type} 
+                      className={`text-[8px] font-black px-1.5 py-0.2 rounded border ${colors[type] || 'bg-slate-700/30 text-slate-300 border-slate-500/50'} shadow-sm`}
+                    >
+                      {icons[type] || '❓'}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-64 h-6 bg-black/50 border-2 border-yellow-400 rounded-full overflow-hidden z-[100] shadow-[0_0_10px_rgba(250,204,21,0.5)] flex items-center justify-center">
+          <div className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-orange-500 to-yellow-400 transition-all duration-300" style={{ width: `${fever}%` }} />
+          <span className="relative text-[10px] font-black text-white tracking-widest drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] z-10 uppercase">
+            {fever! >= 100 ? 'USAGYUUUN READY!' : `FEVER ${Math.floor(fever || 0)}%`}
+          </span>
+        </div>
+      )}
 
       {/* Prince Attack Overlay */}
       <AnimatePresence>

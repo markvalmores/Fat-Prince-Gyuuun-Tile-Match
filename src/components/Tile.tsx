@@ -366,6 +366,17 @@ export const TileComponent: React.FC<TileProps> = ({ tile, isSelected, isHinted,
       <span className="text-2xl drop-shadow-md select-none">
         {tile.type === TileType.EMPTY ? '✨' : tileIcons[tile.type]}
       </span>
+      {tile.lockType === 'ice' && (
+        <div className="absolute inset-0 rounded-md bg-sky-300/40 backdrop-blur-[1px] border border-sky-200 flex items-center justify-center shadow-[inset_0_0_8px_rgba(14,165,233,0.7)] z-10 pointer-events-none">
+          <span className="text-xl drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] animate-pulse select-none">❄️</span>
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-sky-200/5 to-transparent pointer-events-none" />
+        </div>
+      )}
+      {tile.lockType === 'chains' && (
+        <div className="absolute inset-0 rounded-md bg-slate-950/45 border border-slate-500 flex items-center justify-center shadow-[inset_0_0_8px_rgba(0,0,0,0.85)] z-10 pointer-events-none">
+          <span className="text-xl drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.8)] select-none">⛓️</span>
+        </div>
+      )}
       {tile.isGlowing && (
         <motion.div 
            animate={{ opacity: [0.5, 1, 0.5] }}

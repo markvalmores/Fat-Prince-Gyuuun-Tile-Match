@@ -4,12 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { HomeScreen } from './components/HomeScreen';
 import { MapScreen } from './components/MapScreen';
 import { GameScreen } from './components/GameScreen';
 import { ZoomWrapper } from './components/ZoomWrapper';
 import { ParticleProvider } from './components/ParticleSystem';
 import { SettingsProvider } from './components/SettingsProvider';
+import { AudioProvider } from './components/AudioProvider';
 import { 
   getOrGeneratePlayerId, 
   loadUserMissions, 
@@ -21,6 +23,7 @@ import {
   validateMissionsConnection 
 } from './utils/missions';
 import { TileType } from './types';
+import { triggerHaptic } from './utils/haptics';
 
 type AppState = 'HOME' | 'MAP' | 'GAME';
 
@@ -30,11 +33,26 @@ export interface Upgrades {
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('HOME');
+  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
   
   const [maxUnlockedLevel, setMaxUnlockedLevel] = useState<number>(1);
   const [carrots, setCarrots] = useState<number>(0);
   const [upgrades, setUpgrades] = useState<Upgrades>({ level: 1 });
+
+  const navigateTo = (newState: AppState) => {
+    if (
+      (appState === 'HOME' && newState === 'MAP') ||
+      (appState === 'MAP' && newState === 'GAME') ||
+      (appState === 'HOME' && newState === 'GAME')
+    ) {
+      setDirection('forward');
+    } else {
+      setDirection('backward');
+    }
+    triggerHaptic('medium');
+    setAppState(newState);
+  };
 
   const [playerId, setPlayerId] = useState<string>('');
   const [missionsData, setMissionsData] = useState<UserMissionsData | null>(null);
@@ -252,54 +270,114 @@ export default function App() {
     await saveUserMissions(playerId, missionsData.playerName, updated);
   };
 
+  const slideVariants = {
+    initial: (dir: 'forward' | 'backward') => ({
+      opacity: 0,
+      x: dir === 'forward' ? 120 : -120,
+      scale: 0.98,
+    }),
+    animate: {
+      opacity: 1,
+      x: 0,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 280,
+        damping: 26,
+      },
+    },
+    exit: (dir: 'forward' | 'backward') => ({
+      opacity: 0,
+      x: dir === 'forward' ? -120 : 120,
+      scale: 0.98,
+      transition: {
+        duration: 0.25,
+      },
+    }),
+  };
+
   return (
     <SettingsProvider>
-      <ParticleProvider>
-        <ZoomWrapper>
-          {appState === 'HOME' && (
-          <HomeScreen 
-            onPlay={() => setAppState('MAP')} 
-            carrots={carrots}
-            upgrades={upgrades}
-            onUpgrade={saveUpgrades}
-            onSpendCarrots={saveCarrots}
-            missionsData={missionsData}
-            onClaimReward={handleClaimReward}
-            onNameChange={handleNameChange}
-            userProfileData={userProfileData}
-            onClaimLogin={handleClaimLogin}
-            onClaimOccasion={handleClaimOccasion}
-            onSaveBirthday={handleSaveBirthday}
-            activePlayerCount={activePlayerCount}
-          />
-        )}
-        
-        {appState === 'MAP' && (
-          <MapScreen 
-            maxLevel={maxUnlockedLevel}
-            carrots={carrots}
-            levelStars={userProfileData?.levelStars}
-            onSelectLevel={(level) => {
-              setSelectedLevel(level);
-              setAppState('GAME');
-            }}
-            onBack={() => setAppState('HOME')}
-          />
-        )}
-        
-        {appState === 'GAME' && (
-          <GameScreen 
-            key={selectedLevel} // Remounts if level changes
-            initialLevel={selectedLevel}
-            upgrades={upgrades}
-            onWin={handleWin}
-            onLose={handleLose}
-            onExit={() => setAppState('MAP')}
-            onClearTiles={handleClearTiles}
-          />
-        )}
-      </ZoomWrapper>
-    </ParticleProvider>
+      <AudioProvider>
+        <ParticleProvider>
+          <ZoomWrapper>
+            <AnimatePresence mode="wait" custom={direction}>
+            {appState === 'HOME' && (
+              <motion.div 
+                key="home" 
+                custom={direction} 
+                variants={slideVariants} 
+                initial="initial" 
+                animate="animate" 
+                exit="exit" 
+                className="w-full h-full"
+              >
+                <HomeScreen 
+                  onPlay={() => navigateTo('MAP')} 
+                  carrots={carrots}
+                  upgrades={upgrades}
+                  onUpgrade={saveUpgrades}
+                  onSpendCarrots={saveCarrots}
+                  missionsData={missionsData}
+                  onClaimReward={handleClaimReward}
+                  onNameChange={handleNameChange}
+                  userProfileData={userProfileData}
+                  onClaimLogin={handleClaimLogin}
+                  onClaimOccasion={handleClaimOccasion}
+                  onSaveBirthday={handleSaveBirthday}
+                  activePlayerCount={activePlayerCount}
+                />
+              </motion.div>
+            )}
+            
+            {appState === 'MAP' && (
+              <motion.div 
+                key="map" 
+                custom={direction} 
+                variants={slideVariants} 
+                initial="initial" 
+                animate="animate" 
+                exit="exit" 
+                className="w-full h-full"
+              >
+                <MapScreen 
+                  maxLevel={maxUnlockedLevel}
+                  carrots={carrots}
+                  levelStars={userProfileData?.levelStars}
+                  onSelectLevel={(level) => {
+                    setSelectedLevel(level);
+                    navigateTo('GAME');
+                  }}
+                  onBack={() => navigateTo('HOME')}
+                />
+              </motion.div>
+            )}
+            
+            {appState === 'GAME' && (
+              <motion.div 
+                key="game" 
+                custom={direction} 
+                variants={slideVariants} 
+                initial="initial" 
+                animate="animate" 
+                exit="exit" 
+                className="w-full h-full"
+              >
+                <GameScreen 
+                  key={selectedLevel} // Remounts if level changes
+                  initialLevel={selectedLevel}
+                  upgrades={upgrades}
+                  onWin={handleWin}
+                  onLose={handleLose}
+                  onExit={() => navigateTo('MAP')}
+                  onClearTiles={handleClearTiles}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </ZoomWrapper>
+      </ParticleProvider>
+    </AudioProvider>
   </SettingsProvider>
   );
 }

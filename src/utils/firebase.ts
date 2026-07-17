@@ -7,7 +7,8 @@ import {
   query, 
   orderBy, 
   limit, 
-  serverTimestamp 
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 
 // Inlined configuration from firebase-applet-config.json
@@ -31,6 +32,25 @@ export interface LeaderboardEntry {
   score: number;
   level: number;
   timestamp?: any;
+}
+
+/**
+ * Subscribe to Top 10 users ordered by cumulativeStars descending
+ */
+export function subscribeToStarLeaderboard(callback: (entries: {name: string, stars: number}[]) => void) {
+  const colRef = collection(db, 'userProfiles');
+  const q = query(colRef, orderBy('cumulativeStars', 'desc'), limit(10));
+  return onSnapshot(q, (snapshot) => {
+    const results: {name: string, stars: number}[] = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      results.push({
+        name: data.playerName || 'Anonymous',
+        stars: Number(data.cumulativeStars) || 0
+      });
+    });
+    callback(results);
+  });
 }
 
 /**

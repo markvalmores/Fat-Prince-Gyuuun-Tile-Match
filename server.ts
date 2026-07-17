@@ -95,21 +95,21 @@ app.post('/api/level-data', async (req, res) => {
   }
 
   try {
-    const prompt = `You are an expert game designer for 'Fat Prince Gyuuun Tile Match', a Match-3 RPG puzzle game.
-Generate a JSON object representing the animal enemies for Level ${level}.
-The level has ${isBossLevel ? "1 Boss Wave" : `${numWaves} waves`}.
+    const prompt = `You are an expert anime game designer for 'Fat Prince Gyuuun Tile Match', a Match-3 RPG puzzle game.
+Generate a JSON object representing the anime-style animal enemies for Level ${level}.
+The level has ${isBossLevel ? "1 Legendary Boss Wave" : `${numWaves} waves`}.
 
-For each wave, generate a list of creative animal enemies.
+For each wave, generate a list of creative, anime-themed animal enemies.
 The level is ${level}.
 There are ${numWaves} waves.
 Is it a Boss Level? ${isBossLevel ? "Yes" : "No"}.
 
 Here are the guidelines:
-1. Each enemy is a unique animal. Supported animalTypes:
+1. Each enemy is a unique animal with a strong anime personality. Supported animalTypes:
    'bear', 'cat', 'fox', 'rabbit', 'pig', 'panda', 'koala', 'frog', 'bird', 'dragon', 'lion', 'wolf', 'penguin', 'elephant', 'snake', 'badger'.
 2. Visual accessories (can be empty, or contain 1-2):
    'glasses', 'hat', 'wings', 'horns', 'crown', 'sword', 'armor', 'cape'. (The boss wave must have 'crown' for the boss).
-3. Provide a creative name and flavor description for each.
+3. Provide a creative name (e.g., 'Shadow Blade Kitsune', 'Thunder God Ursus') and a dramatic anime-style flavor description for each.
 4. Calculate stats:
    - Base HP multiplier is ${hpMultiplier.toFixed(3)}.
    - Suggested Normal Enemy HP: around ${Math.floor(50 * hpMultiplier)} to ${Math.floor(75 * hpMultiplier)}.

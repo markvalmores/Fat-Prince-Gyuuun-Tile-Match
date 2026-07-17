@@ -20,6 +20,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   const [levelCarrots, setLevelCarrots] = useState(0);
   const [comboPopup, setComboPopup] = useState<{ text: string, carrots: number, multiplier: number, id: string } | null>(null);
   
+  const [matchTick, setMatchTick] = useState(0);
   const [level, setLevel] = useState(initialLevel);
   const [bossRequiredTypes, setBossRequiredTypes] = useState<TileType[]>([]);
   const [wave, setWave] = useState(0);
@@ -355,22 +356,12 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         setGameState('IDLE');
         return;
       } else {
-        // All waves cleared but level survival timer is still running!
-        // To keep the player fighting, loop back to Wave 0 with scaled-up enemy stats
-        setWave(0);
-        const loopCount = Math.floor(Math.random() * 3) + 1;
-        const scaledWaves = data.waves.map((waveEnemies: any) => 
-          waveEnemies.map((enemy: any) => ({
-            ...enemy,
-            id: `${enemy.id}_loop_${Date.now()}_${Math.random()}`,
-            hp: Math.floor(enemy.maxHp * (1.2 + 0.15 * loopCount)),
-            maxHp: Math.floor(enemy.maxHp * (1.2 + 0.15 * loopCount)),
-            attack: Math.floor(enemy.attack * (1.1 + 0.05 * loopCount)),
-            name: `🌟 ${enemy.name || 'Critter'} II`
-          }))
-        );
-        setEnemies(scaledWaves[0]);
-        setGameState('IDLE');
+        // ALL WAVES CLEARED - WIN!
+        setGameState('LEVEL_COMPLETE');
+        audio.playLevelComplete();
+        setTimeout(() => {
+          setGameState('SLOT_MACHINE');
+        }, 1500);
         return;
       }
     }
@@ -410,7 +401,22 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         if (onLose) onLose(level);
       }, 1500);
     } else {
-      setGameState('IDLE');
+      // Check if board has possible moves, if not, shuffle!
+      const move = findPossibleMove(stateRef.current.board);
+      if (!move && stateRef.current.board.length > 0) {
+        console.log('[useGame] No moves possible, shuffling board...');
+        setGameState('REFILLING');
+        setTimeout(() => {
+          let shuffledBoard = createBoard();
+          while (hasMatches(shuffledBoard) || !findPossibleMove(shuffledBoard)) {
+            shuffledBoard = createBoard();
+          }
+          updateBoard(shuffledBoard);
+          setGameState('IDLE');
+        }, 1000);
+      } else {
+        setGameState('IDLE');
+      }
     }
   }, [onWin, onLose]);
 
@@ -448,7 +454,13 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         triggerHaptic('heavy');
         updateBoard(prev => fillEmptySpaces(prev.map(t => ({ ...t, type: TileType.EMPTY, isGlowing: false }))));
         setRainbowTriggered(false);
-        timeoutId = window.setTimeout(() => setGameState('IDLE'), 300);
+        timeoutId = window.setTimeout(() => {
+          if (hasMatches(stateRef.current.board)) {
+            setMatchTick(t => t + 1);
+          } else {
+            processEnemyAttacks();
+          }
+        }, 300);
         return;
       }
 
@@ -557,9 +569,9 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         
         timeoutId = window.setTimeout(() => {
           if (hasMatches(stateRef.current.board)) {
-            setGameState('MATCHING');
+            setMatchTick(t => t + 1);
           } else {
-            setGameState('IDLE');
+            processEnemyAttacks();
           }
         }, 50);
       } else {
@@ -573,7 +585,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         window.clearTimeout(timeoutId);
       }
     };
-  }, [gameState, handleCombat, processEnemyAttacks, rainbowTriggered, isPaused]);
+  }, [gameState, matchTick, handleCombat, processEnemyAttacks, rainbowTriggered, isPaused]);
 
   const onTileClick = (pos: Position) => {
     resetInactivity();

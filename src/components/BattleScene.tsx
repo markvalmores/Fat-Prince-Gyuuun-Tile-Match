@@ -34,8 +34,8 @@ interface VfxEffect {
 }
 
 const charToBunnyType: Record<string, BunnyType> = {
-  warrior: 'pink_hood',
-  ranger: 'blue_scarf',
+  warrior: 'blue_scarf',
+  ranger: 'cheerleader',
   worker: 'tank',
   priest: 'wizard',
   princess: 'princess'
@@ -265,7 +265,7 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
           >
             <div className="relative transform scale-[3] origin-bottom">
                <div className="absolute inset-0 bg-yellow-400 rounded-full blur-[20px] opacity-50 animate-pulse" />
-               <Bunny type="pink_hood" isAttacking />
+               <Bunny type="fever_prince" isAttacking />
                <motion.div 
                  initial={{ scale: 0 }}
                  animate={{ scale: [1, 1.2, 1] }}

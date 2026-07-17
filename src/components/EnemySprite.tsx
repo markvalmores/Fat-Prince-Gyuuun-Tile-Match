@@ -17,6 +17,31 @@ interface EnemySpriteProps {
 export const EnemySprite: React.FC<EnemySpriteProps> = ({ enemy, isAttacking }) => {
   const animClass = isAttacking ? 'animate-[bounce_0.2s_ease-in-out_infinite]' : '';
 
+  if (enemy.isBoss) {
+    const apiOptions = [
+      `https://api.dicebear.com/7.x/lorelei/svg?seed=${enemy.id}&backgroundColor=transparent`,
+      `https://api.dicebear.com/7.x/adventurer/svg?seed=${enemy.id}&backgroundColor=transparent`,
+      `https://api.dicebear.com/7.x/bottts/svg?seed=${enemy.id}&backgroundColor=transparent`,
+      `https://api.dicebear.com/7.x/big-smile/svg?seed=${enemy.id}&backgroundColor=transparent`,
+      `https://api.dicebear.com/7.x/avataaars/svg?seed=${enemy.id}&backgroundColor=transparent`,
+      `https://api.dicebear.com/7.x/pixel-art/svg?seed=${enemy.id}&backgroundColor=transparent`,
+      `https://robohash.org/${enemy.id}?set=set4`, // Kittens
+      `https://robohash.org/${enemy.id}?set=set2`  // Monsters
+    ];
+    // Pick an API based on seed
+    const seedNum = (enemy.id.length || 0) + (enemy.name?.length || 0);
+    const apiUrl = apiOptions[seedNum % apiOptions.length];
+    
+    return (
+      <div className={`relative flex items-center justify-center select-none ${animClass} w-24 h-24 drop-shadow-2xl`}>
+        <img src={apiUrl} alt="Boss Sprite" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+        {/* Crown Accessory for Boss */}
+        <div className="absolute -top-4 w-10 h-10 text-4xl drop-shadow-md z-30">👑</div>
+        <div className="absolute -inset-2 bg-red-500/20 rounded-full blur-xl animate-pulse -z-10" />
+      </div>
+    );
+  }
+
   // Fallbacks for color
   const primary = enemy.primaryColor || '#A0522D';
   const secondary = enemy.secondaryColor || '#F5DEB3';

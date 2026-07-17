@@ -12,7 +12,7 @@ import { HighScoreSubmit } from './HighScoreSubmit';
 interface GameScreenProps {
   initialLevel: number;
   upgrades?: { level: number };
-  onWin: (level: number, carrots: number) => void;
+  onWin: (level: number, carrots: number, score: number) => void;
   onLose: (level: number) => void;
   onExit: () => void;
   onClearTiles?: (counts: Record<number, number>) => void;

@@ -163,13 +163,34 @@ export default function App() {
     await saveUserProfile(playerId, userProfileData.playerName, updated);
   };
 
-  const handleWin = (level: number, rewardCarrots: number) => {
+  const handleWin = (level: number, rewardCarrots: number, score: number) => {
     const nextLevel = Math.min(level + 1, 1000);
     if (nextLevel > maxUnlockedLevel) {
       setMaxUnlockedLevel(nextLevel);
       localStorage.setItem('fatPrinceMaxLevel', nextLevel.toString());
     }
     saveCarrots(carrots + rewardCarrots);
+
+    // Calculate stars
+    let stars = 0;
+    if (score >= 6000) stars = 3;
+    else if (score >= 4000) stars = 2;
+    else if (score >= 2000) stars = 1;
+    
+    // Save stars
+    if (userProfileData) {
+      const updatedProfile = {
+        ...userProfileData,
+        levelStars: {
+          ...userProfileData.levelStars,
+          [level]: Math.max(stars, userProfileData.levelStars?.[level] || 0)
+        }
+      };
+      setUserProfileData(updatedProfile);
+      saveUserProfile(playerId, userProfileData.playerName, updatedProfile).catch(err => {
+        console.error("Error saving level stars:", err);
+      });
+    }
 
     // Update daily mission winStreak
     if (missionsData) {
@@ -257,6 +278,7 @@ export default function App() {
           <MapScreen 
             maxLevel={maxUnlockedLevel}
             carrots={carrots}
+            levelStars={userProfileData?.levelStars}
             onSelectLevel={(level) => {
               setSelectedLevel(level);
               setAppState('GAME');

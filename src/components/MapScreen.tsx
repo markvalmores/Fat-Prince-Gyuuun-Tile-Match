@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 export interface MapScreenProps {
   maxLevel: number;
   carrots: number;
+  levelStars?: { [level: string]: number };
   onSelectLevel: (level: number) => void;
   onBack: () => void;
 }
@@ -14,11 +15,13 @@ const LevelNode = ({
   level, 
   isUnlocked, 
   isCurrent, 
+  stars,
   onClick 
 }: { 
   level: number, 
   isUnlocked: boolean, 
   isCurrent: boolean, 
+  stars: number,
   onClick: () => void 
 }) => {
   return (
@@ -55,6 +58,13 @@ const LevelNode = ({
           <span className={`font-black uppercase tracking-wider text-sm ${isUnlocked ? 'text-black' : 'text-black/50'}`}>
             {isUnlocked ? level : 'Locked'}
           </span>
+          {isUnlocked && stars > 0 && (
+             <div className="flex justify-center -mt-0.5">
+               {[1, 2, 3].map(i => (
+                  <span key={i} className={`text-[10px] ${i <= stars ? 'text-yellow-400' : 'text-gray-400'} drop-shadow-sm`}>★</span>
+               ))}
+             </div>
+          )}
         </div>
       </div>
       
@@ -128,6 +138,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ maxLevel, carrots, onSelec
                   level={level}
                   isUnlocked={isUnlocked}
                   isCurrent={isCurrent}
+                  stars={levelStars?.[level] || 0}
                   onClick={() => isUnlocked && setPreviewLevel(level)}
                 />
               </div>

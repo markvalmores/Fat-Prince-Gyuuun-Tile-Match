@@ -6,7 +6,7 @@ import { audio } from './audio';
 
 type GameState = 'IDLE' | 'SWAPPING' | 'MATCHING' | 'FALLING' | 'REFILLING' | 'GAME_OVER' | 'LEVEL_COMPLETE' | 'SLOT_MACHINE' | 'LOADING';
 
-export const useGame = (options: { initialLevel?: number, upgrades?: { level: number }, onWin?: (level: number, carrots: number) => void, onLose?: (level: number) => void, onClearTiles?: (counts: Record<TileType, number>) => void } = {}) => {
+export const useGame = (options: { initialLevel?: number, upgrades?: { level: number }, onWin?: (level: number, carrots: number, score: number) => void, onLose?: (level: number) => void, onClearTiles?: (counts: Record<TileType, number>) => void } = {}) => {
   const { initialLevel = 1, upgrades = { level: 1 }, onWin, onLose, onClearTiles } = options;
   const [board, setBoard] = useState<Tile[]>([]);
   const [gameState, setGameState] = useState<GameState>('IDLE');
@@ -569,7 +569,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   };
 
   const proceedToNextLevel = (rewardCarrots: number) => {
-    if (onWin) onWin(level, rewardCarrots);
+    if (onWin) onWin(level, rewardCarrots, score);
     setGameState('LOADING');
     setTimeout(() => {
       setLevel(l => Math.min(l + 1, 1000));

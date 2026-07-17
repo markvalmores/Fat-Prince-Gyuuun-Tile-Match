@@ -27,6 +27,7 @@ export interface UserProfileData {
   playerName: string;
   claimedLoginDays: string[];
   claimedOccasions: string[];
+  levelStars?: { [level: string]: number };
   birthday?: string;
   updatedAt: any;
 }
@@ -265,6 +266,7 @@ export async function saveUserProfile(
       playerName: playerName || data.playerName || 'Knight',
       claimedLoginDays: Array.isArray(data.claimedLoginDays) ? data.claimedLoginDays : [],
       claimedOccasions: Array.isArray(data.claimedOccasions) ? data.claimedOccasions : [],
+      levelStars: data.levelStars || {},
       updatedAt: serverTimestamp()
     };
     if (data.birthday) {

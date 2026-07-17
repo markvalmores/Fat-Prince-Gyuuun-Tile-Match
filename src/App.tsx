@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { HomeScreen } from './components/HomeScreen';
 import { MapScreen } from './components/MapScreen';
 import { GameScreen } from './components/GameScreen';
-import { ZoomWrapper } from './components/ZoomWrapper';
 import { StartTheGame } from './components/StartTheGame';
 import { ParticleProvider } from './components/ParticleSystem';
 import { SettingsProvider } from './components/SettingsProvider';
@@ -304,9 +303,8 @@ export default function App() {
     <SettingsProvider>
       <AudioProvider>
         <ParticleProvider>
-          <ZoomWrapper>
-            <AnimatePresence mode="wait" custom={direction}>
-            {appState === 'HOME' && (
+          <AnimatePresence mode="wait" custom={direction}>
+          {appState === 'HOME' && (
               <motion.div 
                 key="home" 
                 custom={direction} 
@@ -379,7 +377,6 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
-        </ZoomWrapper>
 
         {isStartingGame && (
           <StartTheGame 

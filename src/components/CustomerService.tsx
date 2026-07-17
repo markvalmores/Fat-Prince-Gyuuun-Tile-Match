@@ -52,7 +52,7 @@ export const CustomerService: React.FC = () => {
   return (
     <>
       <motion.button
-        className="fixed bottom-6 right-6 w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white border-[4px] border-black shadow-[4px_4px_0_#000] z-[100] hover:bg-blue-400 transition-colors"
+        className="fixed bottom-6 right-6 w-16 h-16 bg-[#f4dcb8] rounded-full flex items-center justify-center border-[4px] border-black shadow-[4px_4px_0_#000] z-[100] hover:bg-[#e8c39e] transition-colors p-1"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => {
@@ -61,9 +61,11 @@ export const CustomerService: React.FC = () => {
         }}
         title="Chat Customer Service"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-        </svg>
+        <img 
+          src="https://www.image2url.com/r2/default/images/1784316642112-c03f818d-9cbd-4116-be7c-d62c51737ed6.png" 
+          alt="Support" 
+          className="w-full h-full object-contain pointer-events-none"
+        />
       </motion.button>
 
       <AnimatePresence>

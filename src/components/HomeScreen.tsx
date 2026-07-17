@@ -246,7 +246,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-sky-900 flex flex-col items-center justify-center font-sans overflow-hidden relative selection:bg-none touch-none">
+    <div className="min-h-screen bg-sky-900 flex flex-col items-center justify-center font-sans overflow-hidden relative selection:bg-none">
       <div className="absolute inset-0 bg-gradient-to-b from-sky-700 to-sky-950 opacity-80" />
       
       {/* Background decoration */}

@@ -10,17 +10,22 @@ interface StartTheGameProps {
 export const StartTheGame: React.FC<StartTheGameProps> = ({ level, onAnimationComplete }) => {
   const isBoss = level % 10 === 0;
 
+  const onAnimationCompleteRef = React.useRef(onAnimationComplete);
+  useEffect(() => {
+    onAnimationCompleteRef.current = onAnimationComplete;
+  }, [onAnimationComplete]);
+
   useEffect(() => {
     // Play a start sound if available or a click
     audio.playClick();
     
     // Auto complete the intro after 2 seconds
     const timer = setTimeout(() => {
-      onAnimationComplete();
+      onAnimationCompleteRef.current();
     }, 2200);
 
     return () => clearTimeout(timer);
-  }, [onAnimationComplete]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[500] bg-slate-950 flex flex-col items-center justify-center overflow-hidden">

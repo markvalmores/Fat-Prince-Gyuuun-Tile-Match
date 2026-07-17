@@ -45,7 +45,7 @@ const LevelNode = ({
          <img 
            src="https://www.image2url.com/r2/default/images/1784316642112-c03f818d-9cbd-4116-be7c-d62c51737ed6.png" 
            alt="Level Node" 
-           className="w-full h-full object-contain drop-shadow-md"
+           className="w-full h-full object-contain drop-shadow-md pointer-events-none"
          />
          {isCurrent && (
             <motion.div 

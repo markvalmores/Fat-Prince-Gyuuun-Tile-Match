@@ -65,6 +65,7 @@ const LevelNode = ({
 }
 
 export const MapScreen: React.FC<MapScreenProps> = ({ maxLevel, carrots, onSelectLevel, onBack }) => {
+  const [previewLevel, setPreviewLevel] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -127,13 +128,55 @@ export const MapScreen: React.FC<MapScreenProps> = ({ maxLevel, carrots, onSelec
                   level={level}
                   isUnlocked={isUnlocked}
                   isCurrent={isCurrent}
-                  onClick={() => onSelectLevel(level)}
+                  onClick={() => isUnlocked && setPreviewLevel(level)}
                 />
               </div>
             );
           })}
         </div>
       </div>
+      
+      {/* Level Preview Modal */}
+      <AnimatePresence>
+        {previewLevel !== null && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            onClick={() => setPreviewLevel(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#f4dcb8] border-[6px] border-black p-8 rounded-3xl w-full max-w-sm text-center shadow-[8px_8px_0_rgba(0,0,0,0.3)]"
+              onClick={e => e.stopPropagation()}
+            >
+              <h2 className="text-3xl font-black text-black mb-2">Level {previewLevel}</h2>
+              <div className="bg-white p-4 rounded-xl border-2 border-black mb-6">
+                <p className="font-bold text-gray-700">Objective:</p>
+                <p className="text-xl font-black text-black mb-2">
+                  {previewLevel % 10 === 0 ? "Defeat the Boss!" : "Clear the Board!"}
+                </p>
+                <p className="font-bold text-gray-700">Target Score:</p>
+                <p className="text-xl font-black text-black">
+                  {previewLevel * 1000 + 5000}
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setPreviewLevel(null);
+                  onSelectLevel(previewLevel);
+                }}
+                className="w-full bg-emerald-500 border-4 border-black text-white py-3 rounded-xl font-black text-xl hover:bg-emerald-600 active:scale-95 transition-transform"
+              >
+                START
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Bottom Bar overlay (like the reference image bottom edge) */}
       <div className="absolute bottom-0 left-0 right-0 h-16 bg-[#a68a5c] border-t-[4px] border-black z-50 flex items-center justify-around px-4">

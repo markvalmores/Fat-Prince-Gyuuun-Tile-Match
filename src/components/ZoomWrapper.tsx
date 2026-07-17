@@ -34,17 +34,19 @@ export const ZoomWrapper: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-slate-900 overflow-hidden flex items-center justify-center">
-      <div
-        className="touch-none w-screen h-screen"
-        style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      >
-        {children}
-      </div>
+    <div
+      className="touch-none w-full h-full overflow-hidden"
+      style={{ 
+        transform: `scale(${scale})`, 
+        transformOrigin: 'center center',
+        transition: 'transform 0.1s ease-out' 
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      {children}
     </div>
   );
 };

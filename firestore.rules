@@ -75,5 +75,10 @@ service cloud.firestore {
       allow create, update: if isValidId(profileId) && isValidUserProfile(request.resource.data);
       allow delete: if false;
     }
+
+    match /customer_service_chats/{chatId} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
   }
 }

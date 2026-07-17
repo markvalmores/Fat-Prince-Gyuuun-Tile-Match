@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { audio } from '../utils/audio';
+import { StagePreview } from './StagePreview';
 
 export interface MapScreenProps {
   maxLevel: number;
@@ -40,10 +41,12 @@ const LevelNode = ({
       }}
     >
       {/* Node House/Castle icon (shocked orange bunny head visual) */}
-      <div className={`w-10 h-10 ${isUnlocked ? 'bg-orange-400' : 'bg-gray-400'} border-[3px] border-black rounded-t-full rounded-b-md relative flex items-center justify-center z-10 shadow-sm`}>
-         <div className="w-3 h-4 bg-black rounded-t-full absolute bottom-0" />
-         <div className="w-2 h-2 bg-yellow-200 border-2 border-black rounded-full absolute top-2 left-2" />
-         <div className="w-2 h-2 bg-yellow-200 border-2 border-black rounded-full absolute top-2 right-2" />
+      <div className={`w-10 h-10 relative flex items-center justify-center z-10 shadow-sm ${!isUnlocked && 'grayscale opacity-60'}`}>
+         <img 
+           src="https://www.image2url.com/r2/default/images/1784316642112-c03f818d-9cbd-4116-be7c-d62c51737ed6.png" 
+           alt="Level Node" 
+           className="w-full h-full object-contain drop-shadow-md"
+         />
          {isCurrent && (
             <motion.div 
               className="absolute -top-8 text-2xl drop-shadow-md z-30"
@@ -183,51 +186,14 @@ export const MapScreen: React.FC<MapScreenProps> = ({ maxLevel, carrots, levelSt
       {/* Level Preview Modal */}
       <AnimatePresence>
         {previewLevel !== null && (
-          <motion.div 
-            key="level-preview-modal-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-[2px]"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                audio.playClick();
-                setPreviewLevel(null);
-              }
+          <StagePreview
+            level={previewLevel}
+            onClose={() => setPreviewLevel(null)}
+            onStart={() => {
+              setPreviewLevel(null);
+              onSelectLevel(previewLevel);
             }}
-          >
-            <motion.div 
-              key="level-preview-modal-card"
-              initial={{ scale: 0.9, opacity: 0, y: 35 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.85, opacity: 0, y: 25 }}
-              transition={{ type: 'spring', damping: 24, stiffness: 320 }}
-              className="bg-[#f4dcb8] border-[6px] border-black p-8 rounded-3xl w-full max-w-sm text-center shadow-[8px_8px_0_rgba(0,0,0,0.45)] relative z-[210]"
-              onClick={e => e.stopPropagation()}
-            >
-              <h2 className="text-3xl font-black text-black mb-2">Level {previewLevel}</h2>
-              <div className="bg-white p-4 rounded-xl border-2 border-black mb-6">
-                <p className="font-bold text-gray-700">Objective:</p>
-                <p className="text-xl font-black text-black mb-2">
-                  {previewLevel % 10 === 0 ? "👑 Defeat the Boss!" : "Clear the Board!"}
-                </p>
-                <p className="font-bold text-gray-700">Target Score:</p>
-                <p className="text-xl font-black text-black">
-                  {previewLevel * 1000 + 5000}
-                </p>
-              </div>
-              <button 
-                onClick={() => {
-                  audio.playClick();
-                  setPreviewLevel(null);
-                  onSelectLevel(previewLevel);
-                }}
-                className="w-full bg-emerald-500 border-4 border-black text-white py-3 rounded-xl font-black text-xl hover:bg-emerald-600 active:scale-95 transition-transform shadow-[4px_4px_0_#000]"
-              >
-                START
-              </button>
-            </motion.div>
-          </motion.div>
+          />
         )}
       </AnimatePresence>
       

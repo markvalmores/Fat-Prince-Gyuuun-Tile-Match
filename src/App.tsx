@@ -9,9 +9,12 @@ import { HomeScreen } from './components/HomeScreen';
 import { MapScreen } from './components/MapScreen';
 import { GameScreen } from './components/GameScreen';
 import { ZoomWrapper } from './components/ZoomWrapper';
+import { StartTheGame } from './components/StartTheGame';
 import { ParticleProvider } from './components/ParticleSystem';
 import { SettingsProvider } from './components/SettingsProvider';
 import { AudioProvider } from './components/AudioProvider';
+import { CustomerService } from './components/CustomerService';
+import { RefreshGame } from './components/RefreshGame';
 import { 
   getOrGeneratePlayerId, 
   loadUserMissions, 
@@ -35,6 +38,7 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>('HOME');
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
+  const [isStartingGame, setIsStartingGame] = useState<boolean>(false);
   
   const [maxUnlockedLevel, setMaxUnlockedLevel] = useState<number>(1);
   const [carrots, setCarrots] = useState<number>(0);
@@ -346,7 +350,7 @@ export default function App() {
                   levelStars={userProfileData?.levelStars}
                   onSelectLevel={(level) => {
                     setSelectedLevel(level);
-                    navigateTo('GAME');
+                    setIsStartingGame(true);
                   }}
                   onBack={() => navigateTo('HOME')}
                 />
@@ -376,6 +380,19 @@ export default function App() {
             )}
           </AnimatePresence>
         </ZoomWrapper>
+
+        {isStartingGame && (
+          <StartTheGame 
+            level={selectedLevel} 
+            onAnimationComplete={() => {
+              setIsStartingGame(false);
+              navigateTo('GAME');
+            }}
+          />
+        )}
+
+        <CustomerService />
+        <RefreshGame />
       </ParticleProvider>
     </AudioProvider>
   </SettingsProvider>

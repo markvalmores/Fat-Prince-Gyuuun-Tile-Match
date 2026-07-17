@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings } from './SettingsProvider';
 
 interface Particle {
-  id: number;
+  id: string;
   x: number;
   y: number;
 }
@@ -18,7 +18,7 @@ export const ParticleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (graphicsQuality === 'LowRes') return; // Disable particles for LowRes
     const count = graphicsQuality === 'HighRes' ? 20 : 10;
     const newParticles = Array.from({ length: count }).map((_, i) => ({
-      id: Date.now() + i,
+      id: `${Date.now()}_${i}_${Math.random()}`,
       x: x + (Math.random() - 0.5) * 50,
       y: y + (Math.random() - 0.5) * 50,
     }));

@@ -30,6 +30,7 @@ export interface UserProfileData {
   levelStars?: { [level: string]: number };
   cumulativeStars?: number;
   birthday?: string;
+  email?: string;
   updatedAt: any;
 }
 
@@ -216,7 +217,10 @@ export async function loadUserProfile(playerId: string, playerName: string): Pro
         playerName: data.playerName || playerName,
         claimedLoginDays: Array.isArray(data.claimedLoginDays) ? data.claimedLoginDays : [],
         claimedOccasions: Array.isArray(data.claimedOccasions) ? data.claimedOccasions : [],
+        levelStars: data.levelStars || {},
+        cumulativeStars: data.cumulativeStars || 0,
         birthday: data.birthday || '',
+        email: data.email || '',
         updatedAt: data.updatedAt
       };
     } else {
@@ -226,6 +230,8 @@ export async function loadUserProfile(playerId: string, playerName: string): Pro
         playerName: playerName || 'Knight',
         claimedLoginDays: [],
         claimedOccasions: [],
+        levelStars: {},
+        cumulativeStars: 0,
         birthday: '',
         updatedAt: serverTimestamp()
       };
@@ -234,6 +240,8 @@ export async function loadUserProfile(playerId: string, playerName: string): Pro
         playerName: newProfile.playerName,
         claimedLoginDays: newProfile.claimedLoginDays,
         claimedOccasions: newProfile.claimedOccasions,
+        levelStars: newProfile.levelStars,
+        cumulativeStars: newProfile.cumulativeStars,
         updatedAt: serverTimestamp()
       });
       return newProfile;
@@ -275,6 +283,9 @@ export async function saveUserProfile(
     };
     if (data.birthday) {
       payload.birthday = data.birthday;
+    }
+    if (data.email) {
+      payload.email = data.email;
     }
     await setDoc(docRef, payload);
   } catch (error) {

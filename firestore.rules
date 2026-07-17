@@ -15,7 +15,7 @@ service cloud.firestore {
     function isValidLeaderboardEntry(data) {
       return data.keys().hasAll(['name', 'score', 'level', 'timestamp']) 
         && data.keys().size() == 4
-        && data.name is string && data.name.size() > 0 && data.name.size() <= 20
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 30
         && data.score is int && data.score >= 0
         && data.level is int && data.level >= 1
         && data.timestamp == request.time;
@@ -31,7 +31,7 @@ service cloud.firestore {
         ]) 
         && data.keys().size() == 10
         && data.playerId is string && data.playerId.size() <= 128 && data.playerId.matches('^[a-zA-Z0-9_\\-]+$')
-        && data.playerName is string && data.playerName.size() <= 20
+        && data.playerName is string && data.playerName.size() <= 30
         && data.date is string && data.date.size() == 10 && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && data.clearedCakes is int && data.clearedCakes >= 0
         && data.clearedSwords is int && data.clearedSwords >= 0
@@ -45,14 +45,18 @@ service cloud.firestore {
     // Validation for User Profiles (Login Calendar + Occasion claims)
     function isValidUserProfile(data) {
       return data.keys().hasAll([
-          'playerId', 'playerName', 'claimedLoginDays', 'claimedOccasions', 'updatedAt'
+          'playerId', 'playerName', 'claimedLoginDays', 'claimedOccasions', 'levelStars', 'cumulativeStars', 'updatedAt'
         ])
-        && (data.keys().size() == 5 || (data.keys().size() == 6 && data.keys().hasAny(['birthday']) && data.birthday is string && data.birthday.size() <= 10))
+        && data.keys().size() >= 7 && data.keys().size() <= 9
         && data.playerId is string && data.playerId.size() <= 128 && data.playerId.matches('^[a-zA-Z0-9_\\-]+$')
-        && data.playerName is string && data.playerName.size() <= 20
+        && data.playerName is string && data.playerName.size() <= 30
         && data.claimedLoginDays is list
         && data.claimedOccasions is list
-        && data.updatedAt == request.time;
+        && data.levelStars is map
+        && data.cumulativeStars is number
+        && data.updatedAt == request.time
+        && (!data.keys().hasAny(['birthday']) || (data.birthday is string && data.birthday.size() <= 10))
+        && (!data.keys().hasAny(['email']) || (data.email is string && data.email.size() <= 100));
     }
 
     // Leaderboard collection rules

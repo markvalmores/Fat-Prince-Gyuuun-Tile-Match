@@ -112,6 +112,17 @@ export default function App() {
       setUserProfileData(profile);
     }).catch(err => {
       console.error("Error loading user profile on mount:", err);
+      setUserProfileData({
+        playerId: pid,
+        playerName: name,
+        claimedLoginDays: [],
+        claimedOccasions: [],
+        levelStars: {},
+        cumulativeStars: 0,
+        birthday: '',
+        email: '',
+        updatedAt: null
+      });
     });
   }, []);
 
@@ -136,7 +147,11 @@ export default function App() {
       playerName: newName
     };
     setMissionsData(updatedMissions);
-    await saveUserMissions(playerId, newName, updatedMissions);
+    try {
+      await saveUserMissions(playerId, newName, updatedMissions);
+    } catch (e) {
+      console.error(e);
+    }
 
     // Update general user profile name
     const currentProfile = userProfileData || await loadUserProfile(playerId, newName);
@@ -145,7 +160,27 @@ export default function App() {
       playerName: newName
     };
     setUserProfileData(updatedProfile);
-    await saveUserProfile(playerId, newName, updatedProfile);
+    try {
+      await saveUserProfile(playerId, newName, updatedProfile);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleEmailChange = async (email: string) => {
+    if (!playerId) return;
+    const currentProfile = userProfileData || await loadUserProfile(playerId, 'Knight');
+    const updatedProfile = {
+      ...currentProfile,
+      email
+    };
+    setUserProfileData(updatedProfile);
+    
+    try {
+      await saveUserProfile(playerId, updatedProfile.playerName, updatedProfile);
+    } catch (error) {
+      console.error("Failed to save player email", error);
+    }
   };
 
   const handleClaimLogin = async (dateStr: string, amount: number) => {
@@ -181,7 +216,11 @@ export default function App() {
       birthday: birthdayStr
     };
     setUserProfileData(updated);
-    await saveUserProfile(playerId, userProfileData.playerName, updated);
+    try {
+      await saveUserProfile(playerId, userProfileData.playerName, updated);
+    } catch (err) {
+      console.error("Failed to save birthday:", err);
+    }
   };
 
   const handleWin = (level: number, rewardCarrots: number, score: number) => {
@@ -312,7 +351,7 @@ export default function App() {
                 initial="initial" 
                 animate="animate" 
                 exit="exit" 
-                className="w-full h-full"
+                className="absolute inset-0"
               >
                 <HomeScreen 
                   onPlay={() => navigateTo('MAP')} 
@@ -323,6 +362,7 @@ export default function App() {
                   missionsData={missionsData}
                   onClaimReward={handleClaimReward}
                   onNameChange={handleNameChange}
+                  onEmailChange={handleEmailChange}
                   userProfileData={userProfileData}
                   onClaimLogin={handleClaimLogin}
                   onClaimOccasion={handleClaimOccasion}
@@ -340,7 +380,7 @@ export default function App() {
                 initial="initial" 
                 animate="animate" 
                 exit="exit" 
-                className="w-full h-full"
+                className="absolute inset-0"
               >
                 <MapScreen 
                   maxLevel={maxUnlockedLevel}
@@ -363,7 +403,7 @@ export default function App() {
                 initial="initial" 
                 animate="animate" 
                 exit="exit" 
-                className="w-full h-full"
+                className="absolute inset-0"
               >
                 <GameScreen 
                   key={selectedLevel} // Remounts if level changes

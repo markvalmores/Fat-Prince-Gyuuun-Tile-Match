@@ -120,7 +120,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ maxLevel, carrots, levelSt
   const levels = Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1);
 
   return (
-    <div className="min-h-screen bg-[#75c6d9] flex flex-col font-sans relative overflow-hidden">
+    <div className="h-screen bg-[#75c6d9] flex flex-col font-sans relative overflow-hidden">
       
       {/* Map Background Textures */}
       <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #000 2px, transparent 2px)', backgroundSize: '32px 32px' }} />

@@ -40,6 +40,7 @@ interface HomeScreenProps {
   missionsData?: UserMissionsData | null;
   onClaimReward?: (missionKey: 'cakes' | 'swords' | 'winStreak', amount: number) => void;
   onNameChange?: (name: string) => void;
+  onEmailChange?: (email: string) => void;
   userProfileData?: UserProfileData | null;
   onClaimLogin?: (dateStr: string, amount: number) => Promise<void>;
   onClaimOccasion?: (occasionId: string, amount: number) => Promise<void>;
@@ -56,6 +57,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   missionsData = null,
   onClaimReward,
   onNameChange,
+  onEmailChange,
   userProfileData = null,
   onClaimLogin,
   onClaimOccasion,
@@ -67,6 +69,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const { graphicsQuality, setGraphicsQuality } = useSettings();
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('fatPrincePlayerName') || '');
+  const [emailInput, setEmailInput] = useState(() => localStorage.getItem('fatPrinceEmail') || '');
   const [showSettings, setShowSettings] = useState(false);
   const [showUpgrades, setShowUpgrades] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
@@ -910,6 +913,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       {diff}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-black text-sky-800 mb-2 uppercase">Bind Email</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="Enter email to bind..."
+                    className="flex-1 px-3 py-2 border-2 border-sky-300 rounded-lg focus:outline-none focus:border-sky-500 font-bold"
+                  />
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('fatPrinceEmail', emailInput);
+                      if (onEmailChange) onEmailChange(emailInput);
+                      alert('Email bound successfully!');
+                    }}
+                    className="px-4 py-2 bg-sky-600 text-white font-black rounded-lg hover:bg-sky-500 active:scale-95 transition-all uppercase"
+                  >
+                    Bind
+                  </button>
                 </div>
               </div>
               

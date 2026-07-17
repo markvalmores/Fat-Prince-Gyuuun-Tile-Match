@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export interface MapScreenProps {
   maxLevel: number;
@@ -74,7 +74,7 @@ const LevelNode = ({
   );
 }
 
-export const MapScreen: React.FC<MapScreenProps> = ({ maxLevel, carrots, onSelectLevel, onBack }) => {
+export const MapScreen: React.FC<MapScreenProps> = ({ maxLevel, carrots, levelStars, onSelectLevel, onBack }) => {
   const [previewLevel, setPreviewLevel] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 

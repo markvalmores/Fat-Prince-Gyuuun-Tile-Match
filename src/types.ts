@@ -6,7 +6,9 @@ export enum TileType {
   HEART = 4, // Priest heal
   CAKE = 5, // Princess special
   RAINBOW = 6, // Match 5 special
-  ROW_CLEARER = 7, // Match 4 special
+  HORIZONTAL_CLEARER = 7, // Match 4 special (renamed from ROW_CLEARER)
+  PLUS_CLEARER = 8, // New plus shape clearer
+  CROSS_CLEARER = 9, // New cross/X shape clearer
 }
 
 export interface Position {

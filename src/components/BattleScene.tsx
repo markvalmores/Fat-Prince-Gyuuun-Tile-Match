@@ -104,7 +104,7 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
 
   interface Projectile {
     id: string;
-    type: 'sword' | 'arrow' | 'bomb' | 'cake';
+    type: 'sword' | 'arrow' | 'bomb' | 'cake' | 'horizontal' | 'plus' | 'cross';
   }
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
 
@@ -168,6 +168,9 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
       if (recentAttacks[TileType.SWORD] > 0) p.push({ id: Math.random().toString(), type: 'sword' });
       if (recentAttacks[TileType.GUN] > 0) p.push({ id: Math.random().toString(), type: 'arrow' });
       if (recentAttacks[TileType.BOMB] > 0) p.push({ id: Math.random().toString(), type: 'bomb' });
+      if (recentAttacks[TileType.HORIZONTAL_CLEARER] > 0) p.push({ id: Math.random().toString(), type: 'horizontal' });
+      if (recentAttacks[TileType.PLUS_CLEARER] > 0) p.push({ id: Math.random().toString(), type: 'plus' });
+      if (recentAttacks[TileType.CROSS_CLEARER] > 0) p.push({ id: Math.random().toString(), type: 'cross' });
       
       if (p.length > 0) {
         setProjectiles(prev => [...prev, ...p]);
@@ -397,6 +400,9 @@ export const BattleScene: React.FC<BattleProps> = ({ characters, enemies, level,
                 {p.type === 'arrow' && <div className="text-4xl filter drop-shadow-md">🏹</div>}
                 {p.type === 'bomb' && <div className="text-4xl filter drop-shadow-md">💣</div>}
                 {p.type === 'cake' && <div className="text-5xl filter drop-shadow-md">🎂</div>}
+                {p.type === 'horizontal' && <div className="text-4xl filter drop-shadow-md">↔️</div>}
+                {p.type === 'plus' && <div className="text-4xl filter drop-shadow-md">➕</div>}
+                {p.type === 'cross' && <div className="text-4xl filter drop-shadow-md">✖️</div>}
               </motion.div>
             ))}
           </div>

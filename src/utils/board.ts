@@ -81,7 +81,9 @@ export const findMatches = (board: Tile[]): MatchResult => {
     [TileType.HEART]: 0,
     [TileType.CAKE]: 0,
     [TileType.RAINBOW]: 0,
-    [TileType.ROW_CLEARER]: 0,
+    [TileType.HORIZONTAL_CLEARER]: 0,
+    [TileType.PLUS_CLEARER]: 0,
+    [TileType.CROSS_CLEARER]: 0,
   };
 
   const getTile = (r: number, c: number) => board.find(t => t.r === r && t.c === c);
@@ -155,25 +157,32 @@ export const findMatches = (board: Tile[]): MatchResult => {
   for (const group of matchGroups) {
     if (group.tiles.length === 4) {
       const spawnTile = group.tiles[1]; // middle-ish
-      if (group.isHorizontal) {
-        specialSpawns.push({ r: spawnTile.r, c: spawnTile.c, type: TileType.ROW_CLEARER });
+      const rand = Math.random();
+      let type: TileType;
+      if (rand < 0.33) {
+        type = TileType.HORIZONTAL_CLEARER;
+      } else if (rand < 0.66) {
+        type = TileType.PLUS_CLEARER;
       } else {
-        specialSpawns.push({ r: spawnTile.r, c: spawnTile.c, type: TileType.BOMB, isGlowing: true });
+        type = TileType.CROSS_CLEARER;
       }
+      specialSpawns.push({ r: spawnTile.r, c: spawnTile.c, type });
     } else if (group.tiles.length >= 5) {
       const spawnTile = group.tiles[2]; // middle
       specialSpawns.push({ r: spawnTile.r, c: spawnTile.c, type: TileType.RAINBOW });
     }
   }
 
-  // Handle explosions (glowing tiles)
+  // Handle explosions and special pattern clearers
   let changed = true;
   while (changed) {
     changed = false;
     const currentMatches = Array.from(matchedSet);
     for (const id of currentMatches) {
       const tile = board.find(t => t.id === id);
-      if (tile && tile.isGlowing) {
+      if (!tile) continue;
+
+      if (tile.isGlowing) {
         // Explode 3x3 area
         for (let dr = -1; dr <= 1; dr++) {
           for (let dc = -1; dc <= 1; dc++) {
@@ -184,7 +193,33 @@ export const findMatches = (board: Tile[]): MatchResult => {
             }
           }
         }
-        tile.isGlowing = false; // Prevent infinite loop
+        tile.isGlowing = false;
+      }
+
+      if (tile.type === TileType.HORIZONTAL_CLEARER) {
+        const rowTiles = getHorizontalClearTiles({ r: tile.r, c: tile.c }, board);
+        rowTiles.forEach(t => {
+          if (!matchedSet.has(t.id)) {
+            matchedSet.add(t.id);
+            changed = true;
+          }
+        });
+      } else if (tile.type === TileType.PLUS_CLEARER) {
+        const plusTiles = getPlusClearTiles({ r: tile.r, c: tile.c }, board);
+        plusTiles.forEach(t => {
+          if (!matchedSet.has(t.id)) {
+            matchedSet.add(t.id);
+            changed = true;
+          }
+        });
+      } else if (tile.type === TileType.CROSS_CLEARER) {
+        const crossTiles = getCrossClearTiles({ r: tile.r, c: tile.c }, board);
+        crossTiles.forEach(t => {
+          if (!matchedSet.has(t.id)) {
+            matchedSet.add(t.id);
+            changed = true;
+          }
+        });
       }
     }
   }
@@ -198,6 +233,18 @@ export const findMatches = (board: Tile[]): MatchResult => {
   });
 
   return { matchedTiles, counts, specialSpawns, matchGroups };
+};
+
+export const getHorizontalClearTiles = (pos: Position, board: Tile[]): Tile[] => {
+  return board.filter(t => t.r === pos.r);
+};
+
+export const getPlusClearTiles = (pos: Position, board: Tile[]): Tile[] => {
+  return board.filter(t => t.r === pos.r || t.c === pos.c);
+};
+
+export const getCrossClearTiles = (pos: Position, board: Tile[]): Tile[] => {
+  return board.filter(t => Math.abs(t.r - pos.r) === Math.abs(t.c - pos.c));
 };
 
 export const applyGravity = (board: Tile[]): Tile[] => {

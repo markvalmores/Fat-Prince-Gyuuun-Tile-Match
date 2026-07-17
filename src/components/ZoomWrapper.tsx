@@ -35,7 +35,7 @@ export const ZoomWrapper: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <div
-      className="fixed inset-0 w-screen h-screen touch-none overflow-hidden bg-slate-950"
+      className="absolute inset-0 w-screen h-screen overflow-hidden bg-slate-950"
       style={{ 
         transform: `scale(${scale})`, 
         transformOrigin: 'center center',

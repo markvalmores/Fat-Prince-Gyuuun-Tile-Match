@@ -7,22 +7,28 @@ interface BoardProps {
   board: TileData[];
   selectedPos: Position | null;
   cursorPos?: Position | null;
+  hintPositions?: Position[] | null;
   onTileClick: (pos: Position) => void;
+  onTileDoubleClick?: (pos: Position) => void;
   width: number;
 }
 
-export const Board: React.FC<BoardProps> = ({ board, selectedPos, cursorPos, onTileClick, width }) => {
+export const Board: React.FC<BoardProps> = ({ board, selectedPos, cursorPos, hintPositions, onTileClick, onTileDoubleClick, width }) => {
   const tileSize = Math.floor(width / GRID_COLS);
   const height = tileSize * GRID_ROWS;
   
   const boardRef = useRef<HTMLDivElement>(null);
   const [dragStartPos, setDragStartPos] = useState<Position | null>(null);
+  const [scale, setScale] = useState(1);
+  const [lastDist, setLastDist] = useState<number | null>(null);
+  const pointers = useRef(new Map<number, React.PointerEvent>());
+  const lastClickTime = useRef<number>(0);
 
   const getPosFromEvent = (clientX: number, clientY: number): Position | null => {
     if (!boardRef.current) return null;
     const rect = boardRef.current.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const x = (clientX - rect.left) / scale;
+    const y = (clientY - rect.top) / scale;
     
     const c = Math.floor(x / tileSize);
     const r = Math.floor(y / tileSize);
@@ -34,26 +40,58 @@ export const Board: React.FC<BoardProps> = ({ board, selectedPos, cursorPos, onT
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    const pos = getPosFromEvent(e.clientX, e.clientY);
-    if (pos) {
-      setDragStartPos(pos);
-      onTileClick(pos);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, e);
+    if (pointers.current.size === 1) {
+      const pos = getPosFromEvent(e.clientX, e.clientY);
+      if (pos) {
+        const now = Date.now();
+        if (now - lastClickTime.current < 300) {
+            onTileDoubleClick?.(pos);
+            lastClickTime.current = 0;
+        } else {
+            setDragStartPos(pos);
+            onTileClick(pos);
+            lastClickTime.current = now;
+        }
+      }
+    } else if (pointers.current.size === 2) {
+      setDragStartPos(null);
+      const pts = Array.from(pointers.current.values()) as React.PointerEvent[];
+      const dist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+      setLastDist(dist);
     }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragStartPos) return;
-    const pos = getPosFromEvent(e.clientX, e.clientY);
-    if (pos && (pos.r !== dragStartPos.r || pos.c !== dragStartPos.c)) {
-      const isAdj = Math.abs(pos.r - dragStartPos.r) + Math.abs(pos.c - dragStartPos.c) === 1;
-      if (isAdj) {
-         onTileClick(pos);
-         setDragStartPos(null);
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, e);
+
+    if (pointers.current.size === 2) {
+      const pts = Array.from(pointers.current.values()) as React.PointerEvent[];
+      const dist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+      if (lastDist) {
+        const delta = dist / lastDist;
+        setScale(s => Math.min(Math.max(s * delta, 0.5), 3));
+      }
+      setLastDist(dist);
+    } else if (pointers.current.size === 1 && dragStartPos) {
+      const pos = getPosFromEvent(e.clientX, e.clientY);
+      if (pos && (pos.r !== dragStartPos.r || pos.c !== dragStartPos.c)) {
+        const isAdj = Math.abs(pos.r - dragStartPos.r) + Math.abs(pos.c - dragStartPos.c) === 1;
+        if (isAdj) {
+          onTileClick(pos);
+          setDragStartPos(null);
+        }
       }
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) {
+      setLastDist(null);
+    }
     setDragStartPos(null);
   };
 
@@ -61,7 +99,7 @@ export const Board: React.FC<BoardProps> = ({ board, selectedPos, cursorPos, onT
     <div 
       ref={boardRef}
       className="relative bg-gray-900 rounded-xl overflow-hidden mx-auto shadow-inner shadow-black touch-none cursor-pointer"
-      style={{ width, height, userSelect: 'none' }}
+      style={{ width, height, userSelect: 'none', transform: `scale(${scale})`, transformOrigin: 'top center' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -93,6 +131,7 @@ export const Board: React.FC<BoardProps> = ({ board, selectedPos, cursorPos, onT
           tile={tile}
           tileSize={tileSize}
           isSelected={selectedPos?.r === tile.r && selectedPos?.c === tile.c}
+          isHinted={hintPositions?.some(p => p.r === tile.r && p.c === tile.c)}
           onClick={() => {}} // Now handled by Board pointer events
         />
       ))}

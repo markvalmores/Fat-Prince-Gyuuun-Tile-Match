@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../utils/useGame';
+import { useParticles } from './ParticleSystem';
 import { Board } from './Board';
 import { BattleScene } from './BattleScene';
 import { useGamepad } from '../utils/useGamepad';
@@ -124,13 +125,25 @@ const SlotMachine = ({ onComplete, levelCarrots = 0 }: { onComplete: (carrots: n
 };
 
 export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades = { level: 1 }, onWin, onLose, onExit, onClearTiles }) => {
-  const { board, gameState, selectedPos, onTileClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft, levelCarrots, comboPopup, isPaused, setIsPaused, retryLevel } = useGame({
+  const { board, gameState, selectedPos, onTileClick, onTileDoubleClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft, levelCarrots, comboPopup, isPaused, setIsPaused, retryLevel, hintPositions } = useGame({
     initialLevel,
     upgrades,
     onWin,
     onLose,
     onClearTiles
   });
+
+  const { emit } = useParticles();
+
+  const handleTileClick = (pos: Position) => {
+    onTileClick(pos);
+    emit(pos.c * 50 + 25, pos.r * 50 + 25);
+  };
+
+  const handleTileDoubleClick = (pos: Position) => {
+    onTileDoubleClick?.(pos);
+    emit(pos.c * 50 + 25, pos.r * 50 + 25);
+  };
   
   const [showTutorial, setShowTutorial] = useState(false);
   
@@ -428,7 +441,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
             board={board} 
             selectedPos={selectedPos}
             cursorPos={cursorPos}
-            onTileClick={onTileClick}
+            hintPositions={hintPositions}
+            onTileClick={handleTileClick}
+            onTileDoubleClick={handleTileDoubleClick}
             width={boardWidth}
           />
         </div>

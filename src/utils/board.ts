@@ -81,12 +81,13 @@ export const findMatches = (board: Tile[]): MatchResult => {
     [TileType.HEART]: 0,
     [TileType.CAKE]: 0,
     [TileType.RAINBOW]: 0,
+    [TileType.ROW_CLEARER]: 0,
   };
 
   const getTile = (r: number, c: number) => board.find(t => t.r === r && t.c === c);
 
   // We need to find match groups to determine length 4 or 5
-  const matchGroups: { tiles: Tile[], type: TileType }[] = [];
+  const matchGroups: { tiles: Tile[], type: TileType, isHorizontal: boolean }[] = [];
 
   // Horizontal matches
   for (let r = 0; r < GRID_ROWS; r++) {
@@ -97,11 +98,6 @@ export const findMatches = (board: Tile[]): MatchResult => {
       let matchLength = 1;
       while (c + matchLength < GRID_COLS) {
         const next = getTile(r, c + matchLength);
-        if (next && (next.type === t1.type || next.type === TileType.RAINBOW || t1.type === TileType.RAINBOW)) {
-          // Wait, making RAINBOW act as wildcard is complex for match length.
-          // The prompt says "if you match 5 tiles a rainbow tile will show up and it clears the whole entire tile"
-          // We'll just check exact type match for spawning.
-        }
         if (next && next.type === t1.type) {
           matchLength++;
         } else {
@@ -118,7 +114,7 @@ export const findMatches = (board: Tile[]): MatchResult => {
             groupTiles.push(t);
           }
         }
-        matchGroups.push({ tiles: groupTiles, type: t1.type });
+        matchGroups.push({ tiles: groupTiles, type: t1.type, isHorizontal: true });
         c += matchLength - 1; // skip the matched tiles
       }
     }
@@ -149,7 +145,7 @@ export const findMatches = (board: Tile[]): MatchResult => {
             groupTiles.push(t);
           }
         }
-        matchGroups.push({ tiles: groupTiles, type: t1.type });
+        matchGroups.push({ tiles: groupTiles, type: t1.type, isHorizontal: false });
         r += matchLength - 1;
       }
     }
@@ -159,7 +155,11 @@ export const findMatches = (board: Tile[]): MatchResult => {
   for (const group of matchGroups) {
     if (group.tiles.length === 4) {
       const spawnTile = group.tiles[1]; // middle-ish
-      specialSpawns.push({ r: spawnTile.r, c: spawnTile.c, type: spawnTile.type, isGlowing: true });
+      if (group.isHorizontal) {
+        specialSpawns.push({ r: spawnTile.r, c: spawnTile.c, type: TileType.ROW_CLEARER });
+      } else {
+        specialSpawns.push({ r: spawnTile.r, c: spawnTile.c, type: TileType.BOMB, isGlowing: true });
+      }
     } else if (group.tiles.length >= 5) {
       const spawnTile = group.tiles[2]; // middle
       specialSpawns.push({ r: spawnTile.r, c: spawnTile.c, type: TileType.RAINBOW });
@@ -272,3 +272,29 @@ export const swapTiles = (board: Tile[], pos1: Position, pos2: Position): Tile[]
   }
   return newBoard;
 };
+
+export const findPossibleMove = (board: Tile[]): [Position, Position] | null => {
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      const pos1 = { r, c };
+      // Check right neighbor
+      if (c < GRID_COLS - 1) {
+        const pos2 = { r, c: c + 1 };
+        const testBoard = swapTiles(board, pos1, pos2);
+        if (hasMatches(testBoard)) {
+          return [pos1, pos2];
+        }
+      }
+      // Check down neighbor
+      if (r < GRID_ROWS - 1) {
+        const pos2 = { r: r + 1, c };
+        const testBoard = swapTiles(board, pos1, pos2);
+        if (hasMatches(testBoard)) {
+          return [pos1, pos2];
+        }
+      }
+    }
+  }
+  return null;
+};
+

@@ -5,6 +5,7 @@ import { Tile as TileData, TileType } from '../types';
 interface TileProps {
   tile: TileData;
   isSelected: boolean;
+  isHinted?: boolean;
   onClick: () => void;
   tileSize: number;
 }
@@ -17,6 +18,7 @@ const tileStyles = {
   [TileType.HEART]: 'bg-pink-500 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
   [TileType.CAKE]: 'bg-blue-500 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
   [TileType.RAINBOW]: 'bg-gradient-to-br from-red-500 via-green-500 to-blue-500 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
+  [TileType.ROW_CLEARER]: 'bg-purple-600 shadow-[inset_0_-4px_0_rgba(0,0,0,0.2)]',
 };
 
 const tileIcons = {
@@ -27,9 +29,10 @@ const tileIcons = {
   [TileType.HEART]: '❤️',
   [TileType.CAKE]: '🍰',
   [TileType.RAINBOW]: '🌈',
+  [TileType.ROW_CLEARER]: '↔️',
 };
 
-export const TileComponent: React.FC<TileProps> = ({ tile, isSelected, onClick, tileSize }) => {
+export const TileComponent: React.FC<TileProps> = ({ tile, isSelected, isHinted, onClick, tileSize }) => {
   const [showVfx, setShowVfx] = useState(false);
   const [prevType, setPrevType] = useState<TileType>(tile.type);
   
@@ -368,6 +371,13 @@ export const TileComponent: React.FC<TileProps> = ({ tile, isSelected, onClick, 
            animate={{ opacity: [0.5, 1, 0.5] }}
            transition={{ repeat: Infinity, duration: 1 }}
            className="absolute inset-0 rounded-lg border-2 border-yellow-300 shadow-[0_0_15px_rgba(253,224,71,0.8)]"
+        />
+      )}
+      {isHinted && (
+        <motion.div 
+           animate={{ scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7] }}
+           transition={{ repeat: Infinity, duration: 0.8 }}
+           className="absolute inset-0 rounded-lg border-4 border-yellow-300 shadow-[0_0_20px_rgba(253,224,71,0.9)] z-20 pointer-events-none"
         />
       )}
       {tile.type === TileType.EMPTY && (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Tile, TileType, Position, Character, Enemy } from '../types';
-import { createBoard, hasMatches, findMatches, swapTiles, fillEmptySpaces, applyGravity } from './board';
+import { createBoard, hasMatches, findMatches, swapTiles, fillEmptySpaces, applyGravity, findPossibleMove } from './board';
 import { getLevelData, INITIAL_CHARACTERS } from './levels';
 import { audio } from './audio';
 
@@ -38,6 +38,32 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
 
   const [isPaused, setIsPaused] = useState(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
+  const [hintPositions, setHintPositions] = useState<Position[] | null>(null);
+  const lastActivityTime = useRef(Date.now());
+
+  const resetInactivity = useCallback(() => {
+    lastActivityTime.current = Date.now();
+    setHintPositions(null);
+  }, []);
+
+  useEffect(() => {
+    if (isPaused || gameState !== 'IDLE') {
+      lastActivityTime.current = Date.now();
+      setHintPositions(null);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (Date.now() - lastActivityTime.current >= 10000) {
+        const move = findPossibleMove(board);
+        if (move) {
+          setHintPositions(move);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameState, isPaused, board]);
 
   useEffect(() => {
     setLevel(initialLevel);
@@ -140,7 +166,8 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
 
   const [recentAttacks, setRecentAttacks] = useState<Record<TileType, number>>({
     [TileType.EMPTY]: 0, [TileType.SWORD]: 0, [TileType.GUN]: 0, 
-    [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0
+    [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0,
+    [TileType.ROW_CLEARER]: 0
   });
 
   // Keep stateRef updated on every render
@@ -154,7 +181,8 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     setTimeout(() => {
       setRecentAttacks({
         [TileType.EMPTY]: 0, [TileType.SWORD]: 0, [TileType.GUN]: 0, 
-        [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0
+        [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0,
+        [TileType.ROW_CLEARER]: 0
       });
     }, 600); // clear after animation
 
@@ -331,12 +359,12 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
       setCombo(0);
     } else if (gameState === 'MATCHING') {
       const { board: currentBoard, combo: currentCombo } = stateRef.current;
-      
-      if (rainbowTriggered) {
+           if (rainbowTriggered) {
         // Clear entire board!
         const counts: Record<TileType, number> = {
           [TileType.EMPTY]: 0, [TileType.SWORD]: 0, [TileType.GUN]: 0, 
-          [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0
+          [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0,
+          [TileType.ROW_CLEARER]: 0
         };
         currentBoard.forEach(t => {
            if (t.type in counts) counts[t.type as TileType]++;
@@ -351,9 +379,9 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
 
         audio.playMatch(currentCombo);
         handleCombat(counts);
-        updateBoard(prev => prev.map(t => ({ ...t, type: TileType.EMPTY, isGlowing: false })));
+        updateBoard(prev => fillEmptySpaces(prev.map(t => ({ ...t, type: TileType.EMPTY, isGlowing: false }))));
         setRainbowTriggered(false);
-        timeoutId = window.setTimeout(() => setGameState('FALLING'), 300);
+        timeoutId = window.setTimeout(() => setGameState('IDLE'), 300);
         return;
       }
 
@@ -419,7 +447,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         // Apply effects of matches
         handleCombat(matchResult.counts);
         
-        // Remove matched tiles
+        // Remove matched tiles and instantly fall and refill in place!
         const matchedIds = new Set(matchResult.matchedTiles.map(t => t.id));
         updateBoard(prev => {
            const updated = prev.map(t => matchedIds.has(t.id) ? { ...t, type: TileType.EMPTY, isGlowing: false } : t);
@@ -432,20 +460,20 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
                }
              });
            }
-           return updated;
+           return fillEmptySpaces(updated);
         });
         
-        timeoutId = window.setTimeout(() => setGameState('FALLING'), 300);
+        timeoutId = window.setTimeout(() => {
+          if (hasMatches(stateRef.current.board)) {
+            setGameState('MATCHING');
+          } else {
+            setGameState('IDLE');
+          }
+        }, 50);
       } else {
         // No more matches, enemies turn to attack
         processEnemyAttacks();
       }
-    } else if (gameState === 'FALLING') {
-      updateBoard(prev => applyGravity(prev));
-      timeoutId = window.setTimeout(() => setGameState('REFILLING'), 300);
-    } else if (gameState === 'REFILLING') {
-      updateBoard(prev => fillEmptySpaces(prev));
-      timeoutId = window.setTimeout(() => setGameState('MATCHING'), 300);
     }
 
     return () => {
@@ -456,6 +484,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   }, [gameState, handleCombat, processEnemyAttacks, rainbowTriggered, isPaused]);
 
   const onTileClick = (pos: Position) => {
+    resetInactivity();
     if (isPaused) return;
     if (gameState !== 'IDLE') return;
 
@@ -498,6 +527,43 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     }
   };
 
+  const onTileDoubleClick = (pos: Position) => {
+    resetInactivity();
+    if (isPaused) return;
+    if (gameState !== 'IDLE') return;
+
+    // Check if it's a special tile (BOMB or ROW_CLEARER)
+    const tile = board.find(t => t.r === pos.r && t.c === pos.c);
+    if (!tile) return;
+
+    if (tile.type === TileType.BOMB) {
+        // Trigger BOMB effect
+        setGameState('MATCHING');
+        updateBoard(prev => {
+            const updated = prev.map(t => {
+                if (Math.abs(t.r - pos.r) <= 1 && Math.abs(t.c - pos.c) <= 1) {
+                    return { ...t, type: TileType.EMPTY, isGlowing: false };
+                }
+                return t;
+            });
+            return fillEmptySpaces(updated);
+        });
+    } else if (tile.type === TileType.ROW_CLEARER) {
+        // Trigger ROW_CLEARER effect
+        setGameState('MATCHING');
+        updateBoard(prev => {
+            const updated = prev.map(t => {
+                if (t.r === pos.r) {
+                    return { ...t, type: TileType.EMPTY, isGlowing: false };
+                }
+                return t;
+            });
+            return fillEmptySpaces(updated);
+        });
+    }
+  };
+
+
   const clearSelection = () => {
     setSelectedPos(null);
   };
@@ -525,6 +591,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     gameState,
     selectedPos,
     onTileClick,
+    onTileDoubleClick,
     clearSelection,
     proceedToNextLevel,
     level,
@@ -544,6 +611,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     setComboPopup,
     isPaused,
     setIsPaused,
-    retryLevel
+    retryLevel,
+    hintPositions
   };
 };

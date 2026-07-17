@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSettings } from './SettingsProvider';
 import { Leaderboard } from './Leaderboard';
 import { 
   UserMissionsData,
@@ -58,6 +59,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   activePlayerCount = 1
 }) => {
   const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const { graphicsQuality, setGraphicsQuality } = useSettings();
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('fatPrincePlayerName') || '');
   const [showSettings, setShowSettings] = useState(false);
   const [showUpgrades, setShowUpgrades] = useState(false);
@@ -84,6 +86,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [showMilestonesModal, setShowMilestonesModal] = useState(false);
   const [totalKnightsPlayed, setTotalKnightsPlayed] = useState(1);
   const [isSimulating1000, setIsSimulating1000] = useState(false);
+  const [showPasscodeModal, setShowPasscodeModal] = useState(false);
+  const [passcodeFor, setPasscodeFor] = useState<'SIMULATION' | 'NAME_LOCK' | null>(null);
+  const [passcodeInput, setPasscodeInput] = useState('');
 
   // Auto-launch Daily Login Calendar on mount if today is unclaimed
   useEffect(() => {
@@ -156,13 +161,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setShowNamePrompt(true);
   };
 
-  const handleStartGame = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!playerName.trim()) return;
-    const trimmed = playerName.trim();
-    localStorage.setItem('fatPrincePlayerName', trimmed);
+  const proceedWithStart = (name: string) => {
+    localStorage.setItem('fatPrincePlayerName', name);
     if (onNameChange) {
-      onNameChange(trimmed);
+      onNameChange(name);
     }
     setShowNamePrompt(false);
     
@@ -172,6 +174,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     } else {
       onPlay();
     }
+  };
+
+  const handleStartGame = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!playerName.trim()) return;
+    const trimmed = playerName.trim();
+    
+    if (trimmed === "Usagyuun VTuber") {
+      setPasscodeFor('NAME_LOCK');
+      setShowPasscodeModal(true);
+      return;
+    }
+    
+    proceedWithStart(trimmed);
   };
 
   const handleBirthdaySubmit = async (e: React.FormEvent) => {
@@ -417,6 +433,56 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </div>
 
       <AnimatePresence>
+        {showPasscodeModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[130] flex items-center justify-center bg-black/85 backdrop-blur-md p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-slate-900 border-4 border-indigo-500 p-6 rounded-3xl w-full max-w-sm text-center text-white shadow-2xl relative"
+            >
+              <h2 className="text-xl font-black text-indigo-400 mb-4 uppercase tracking-widest">Enter Passcode</h2>
+              <input
+                type="password"
+                placeholder="Passcode"
+                value={passcodeInput}
+                onChange={(e) => setPasscodeInput(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-950 border-2 border-slate-700 rounded-xl text-white font-black text-lg text-center mb-4 focus:outline-none focus:border-indigo-400 transition-all"
+              />
+              <div className="flex gap-3">
+                <button
+                    onClick={() => { setShowPasscodeModal(false); setPasscodeInput(''); }}
+                    className="flex-1 py-2 bg-slate-800 text-gray-300 font-bold rounded-xl"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={() => {
+                        if (passcodeFor === 'SIMULATION' && passcodeInput === '121997') {
+                            setIsSimulating1000(true);
+                            setShowPasscodeModal(false);
+                            setPasscodeInput('');
+                        } else if (passcodeFor === 'NAME_LOCK' && passcodeInput === '1997') {
+                            setShowPasscodeModal(false);
+                            setPasscodeInput('');
+                            proceedWithStart(playerName.trim());
+                        } else {
+                            alert("Wrong passcode!");
+                        }
+                    }}
+                    className="flex-1 py-2 bg-indigo-600 text-white font-black rounded-xl"
+                >
+                    Submit
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         {showLeaderboard && (
           <Leaderboard onClose={() => setShowLeaderboard(false)} />
         )}
@@ -1311,6 +1377,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 );
               })()}
 
+              {/* Graphics Settings */}
+              <div className="mt-6 bg-slate-950/60 border border-slate-850 p-3.5 rounded-2xl text-center">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Graphics Quality</p>
+                <div className="flex gap-2">
+                    {(['LowRes', 'MidRes', 'HighRes'] as const).map((q) => (
+                        <button
+                            key={q}
+                            onClick={() => setGraphicsQuality(q)}
+                            className={`flex-1 py-2 rounded-lg font-black text-[10px] uppercase ${graphicsQuality === q ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-gray-400'}`}
+                        >
+                            {q}
+                        </button>
+                    ))}
+                </div>
+              </div>
+
               {/* Dev Simulation Tool Section */}
               <div className="mt-6 bg-slate-950/60 border border-slate-850 p-3.5 rounded-2xl text-center">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Dev Sandbox & Sandbox Tools</p>
@@ -1318,7 +1400,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <span className="text-[11px] font-bold text-white uppercase tracking-wide">Simulate 1,000+ Players</span>
                   <button
                     type="button"
-                    onClick={() => setIsSimulating1000(prev => !prev)}
+                    onClick={() => {
+                        setPasscodeFor('SIMULATION');
+                        setShowPasscodeModal(true);
+                    }}
                     className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer ${
                       isSimulating1000 
                         ? 'bg-emerald-500 border-emerald-400 text-white shadow-md shadow-emerald-500/20' 

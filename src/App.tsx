@@ -7,6 +7,9 @@ import React, { useState, useEffect } from 'react';
 import { HomeScreen } from './components/HomeScreen';
 import { MapScreen } from './components/MapScreen';
 import { GameScreen } from './components/GameScreen';
+import { ZoomWrapper } from './components/ZoomWrapper';
+import { ParticleProvider } from './components/ParticleSystem';
+import { SettingsProvider } from './components/SettingsProvider';
 import { 
   getOrGeneratePlayerId, 
   loadUserMissions, 
@@ -229,49 +232,53 @@ export default function App() {
   };
 
   return (
-    <>
-      {appState === 'HOME' && (
-        <HomeScreen 
-          onPlay={() => setAppState('MAP')} 
-          carrots={carrots}
-          upgrades={upgrades}
-          onUpgrade={saveUpgrades}
-          onSpendCarrots={saveCarrots}
-          missionsData={missionsData}
-          onClaimReward={handleClaimReward}
-          onNameChange={handleNameChange}
-          userProfileData={userProfileData}
-          onClaimLogin={handleClaimLogin}
-          onClaimOccasion={handleClaimOccasion}
-          onSaveBirthday={handleSaveBirthday}
-          activePlayerCount={activePlayerCount}
-        />
-      )}
-      
-      {appState === 'MAP' && (
-        <MapScreen 
-          maxLevel={maxUnlockedLevel}
-          carrots={carrots}
-          onSelectLevel={(level) => {
-            setSelectedLevel(level);
-            setAppState('GAME');
-          }}
-          onBack={() => setAppState('HOME')}
-        />
-      )}
-      
-      {appState === 'GAME' && (
-        <GameScreen 
-          key={selectedLevel} // Remounts if level changes
-          initialLevel={selectedLevel}
-          upgrades={upgrades}
-          onWin={handleWin}
-          onLose={handleLose}
-          onExit={() => setAppState('MAP')}
-          onClearTiles={handleClearTiles}
-        />
-      )}
-    </>
+    <SettingsProvider>
+      <ParticleProvider>
+        <ZoomWrapper>
+          {appState === 'HOME' && (
+          <HomeScreen 
+            onPlay={() => setAppState('MAP')} 
+            carrots={carrots}
+            upgrades={upgrades}
+            onUpgrade={saveUpgrades}
+            onSpendCarrots={saveCarrots}
+            missionsData={missionsData}
+            onClaimReward={handleClaimReward}
+            onNameChange={handleNameChange}
+            userProfileData={userProfileData}
+            onClaimLogin={handleClaimLogin}
+            onClaimOccasion={handleClaimOccasion}
+            onSaveBirthday={handleSaveBirthday}
+            activePlayerCount={activePlayerCount}
+          />
+        )}
+        
+        {appState === 'MAP' && (
+          <MapScreen 
+            maxLevel={maxUnlockedLevel}
+            carrots={carrots}
+            onSelectLevel={(level) => {
+              setSelectedLevel(level);
+              setAppState('GAME');
+            }}
+            onBack={() => setAppState('HOME')}
+          />
+        )}
+        
+        {appState === 'GAME' && (
+          <GameScreen 
+            key={selectedLevel} // Remounts if level changes
+            initialLevel={selectedLevel}
+            upgrades={upgrades}
+            onWin={handleWin}
+            onLose={handleLose}
+            onExit={() => setAppState('MAP')}
+            onClearTiles={handleClearTiles}
+          />
+        )}
+      </ZoomWrapper>
+    </ParticleProvider>
+  </SettingsProvider>
   );
 }
 

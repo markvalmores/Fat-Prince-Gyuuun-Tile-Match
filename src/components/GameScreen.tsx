@@ -11,6 +11,9 @@ import { Position } from '../types';
 import { HighScoreSubmit } from './HighScoreSubmit';
 import { triggerHaptic } from '../utils/haptics';
 
+import { VictoryOverlay } from './VictoryOverlay';
+import { DefeatOverlay } from './DefeatOverlay';
+
 interface GameScreenProps {
   initialLevel: number;
   upgrades?: { level: number };
@@ -131,7 +134,13 @@ const SlotMachine = ({ onComplete, levelCarrots = 0 }: { onComplete: (carrots: n
 };
 
 export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades = { level: 1 }, onWin, onLose, onExit, onClearTiles }) => {
-  const { board, gameState, selectedPos, onTileClick, onTileDoubleClick, clearSelection, proceedToNextLevel, level, wave, enemies, characters, score, highScore, recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft, levelCarrots, comboPopup, isPaused, setIsPaused, retryLevel, hintPositions, combo, bossRequiredTypes } = useGame({
+  const { 
+    board, gameState, selectedPos, onTileClick, onTileDoubleClick, clearSelection, 
+    proceedToNextLevel, level, wave, enemies, characters, score, highScore, 
+    recentAttacks, fever, princeAttacks, isAiLoading, isAiGenerated, timeLeft, 
+    levelCarrots, comboPopup, isPaused, setIsPaused, retryLevel, startSlotMachine, hintPositions, 
+    combo, bossRequiredTypes, currentTurn, extraTurns 
+  } = useGame({
     initialLevel,
     upgrades,
     onWin,
@@ -175,6 +184,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
   const handleTileDoubleClick = (pos: Position) => {
     onTileDoubleClick?.(pos);
     emit(pos.c * 50 + 25, pos.r * 50 + 25);
+  };
+  
+  const calculateStars = () => {
+    if (score >= 6000) return 3;
+    if (score >= 4000) return 2;
+    return 1;
   };
   
   const [showTutorial, setShowTutorial] = useState(false);
@@ -236,20 +251,25 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
   );
   
   useEffect(() => {
-    const handleResize = () => {
-      // Reserve space for Battle Area (35%) and other UI
+      const handleResize = () => {
       const availableWidth = window.innerWidth;
       const availableHeight = window.innerHeight;
       
-      // Calculate max available height for the board area (Interaction Area - Fever Bar - Buttons)
-      // Interaction area is 65% of screen height
-      const interactionAreaHeight = availableHeight * 0.65;
-      const reservedHeight = 120; // Fever bar + Buttons + Padding
-      const maxBoardHeight = interactionAreaHeight - reservedHeight;
+      // Calculate battle area height dynamically (approx 35% but with constraints)
+      let bHeight = availableHeight * 0.35;
+      if (bHeight < 200) bHeight = 200;
+      if (bHeight > 350) bHeight = 350;
+      
+      const interactionAreaHeight = availableHeight - bHeight;
+      
+      // Reserved height for UI elements in interaction area:
+      // Fever Bar area (~50px) + Action Footer (~70px) + Padding (~20px)
+      const reservedHeight = 140; 
+      const maxBoardHeight = Math.max(interactionAreaHeight - reservedHeight, 150);
       
       // Board is 6 columns, 9 rows. Aspect ratio 6:9 (2:3)
       const maxPossibleWidthByHeight = maxBoardHeight * (6 / 9);
-      const maxPossibleWidthByScreenWidth = availableWidth - 24;
+      const maxPossibleWidthByScreenWidth = availableWidth - 32; 
 
       const targetWidth = Math.min(maxPossibleWidthByHeight, maxPossibleWidthByScreenWidth, 480);
       setBoardWidth(targetWidth);
@@ -258,38 +278,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  if (gameState === 'GAME_OVER') {
-    return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center text-white font-sans relative p-4 overflow-y-auto">
-        <h1 className="text-4xl md:text-5xl font-black text-red-500 mb-2 drop-shadow-lg uppercase tracking-wider">DEFEAT</h1>
-        <p className="text-base text-gray-400 mb-4 font-semibold">You survived on Level {level}</p>
-        
-        <HighScoreSubmit 
-          score={score} 
-          level={level} 
-          onClose={() => {
-            // Callback once submitted or skipped, can reload or go to map
-          }} 
-        />
-
-        <div className="flex gap-4 mt-4">
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-8 py-2.5 bg-white text-black font-black rounded-full hover:bg-gray-200 transition-colors shadow-lg text-xs uppercase tracking-wider"
-          >
-            Try Again
-          </button>
-          <button 
-            onClick={onExit}
-            className="px-8 py-2.5 bg-gray-800 text-white font-black rounded-full hover:bg-gray-700 transition-colors shadow-lg text-xs uppercase tracking-wider"
-          >
-            Map
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -328,6 +316,32 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
         </div>
       </div>
 
+      {/* Turn Indicator */}
+      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center pointer-events-none">
+        <motion.div 
+          key={currentTurn}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`px-6 py-1 rounded-full text-[10px] font-black tracking-[0.3em] uppercase border-2 shadow-xl ${
+            currentTurn === 'PLAYER' 
+              ? "bg-sky-500/90 border-sky-300 text-white shadow-sky-500/20" 
+              : "bg-red-600/90 border-red-400 text-white shadow-red-600/20"
+          }`}
+        >
+          {currentTurn === 'PLAYER' ? 'YOUR TURN' : 'ENEMY TURN'}
+        </motion.div>
+        
+        {extraTurns > 0 && currentTurn === 'PLAYER' && (
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="mt-1 px-3 py-0.5 bg-yellow-400 rounded-lg text-[8px] font-black text-black border border-yellow-600 shadow-lg animate-pulse"
+          >
+            +{extraTurns} EXTRA {extraTurns === 1 ? 'TURN' : 'TURNS'}!
+          </motion.div>
+        )}
+      </div>
+
       {showTutorial && (
         <div className="absolute inset-0 z-[200] bg-black/80 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-[0_0_50px_rgba(255,255,255,0.2)] border-8 border-sky-400 text-center relative">
@@ -352,9 +366,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
         </div>
       )}
 
-      <div className="w-full flex flex-col h-[100dvh] overflow-hidden select-none bg-slate-950">
+      <div className="w-full flex flex-col h-[100svh] overflow-hidden select-none bg-slate-950">
         {/* Battle Area - Guaranteed visibility */}
-        <div className="h-[38vh] min-h-[240px] w-full flex-none relative">
+        <div className="h-[35svh] min-h-[200px] max-h-[350px] w-full flex-none relative">
           <BattleScene 
             characters={characters} 
             enemies={enemies} 
@@ -451,6 +465,30 @@ export const GameScreen: React.FC<GameScreenProps> = ({ initialLevel, upgrades =
         </div>
       </div>
       
+      <AnimatePresence>
+        {gameState === 'GAME_OVER' && (
+          <DefeatOverlay 
+            level={level}
+            score={score}
+            onRetry={retryLevel}
+            onHome={onExit}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {gameState === 'LEVEL_COMPLETE' && (
+          <VictoryOverlay 
+            level={level}
+            score={score}
+            carrots={levelCarrots}
+            stars={calculateStars()}
+            onNext={startSlotMachine}
+            onHome={onExit}
+          />
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {gameState === 'SLOT_MACHINE' && (
           <SlotMachine levelCarrots={levelCarrots} onComplete={(rewardCarrots) => proceedToNextLevel(rewardCarrots)} />

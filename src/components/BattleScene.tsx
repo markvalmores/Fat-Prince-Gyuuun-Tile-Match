@@ -59,8 +59,9 @@ export const BattleScene: React.FC<BattleProps> = ({
   const prevEnemiesRef = useRef(enemies);
   const [charVfx, setCharVfx] = useState<Record<string, VfxEffect[]>>({});
   
-  // Track attack animations briefly
+  // Track attack and damage animations briefly
   const [attackingIds, setAttackingIds] = useState<Set<string>>(new Set());
+  const [damagedIds, setDamagedIds] = useState<Set<string>>(new Set());
 
   const addVfx = (targetId: string, effect: Omit<VfxEffect, 'id'>) => {
     const id = Math.random().toString();
@@ -68,6 +69,18 @@ export const BattleScene: React.FC<BattleProps> = ({
       ...prev,
       [targetId]: [...(prev[targetId] || []), { ...effect, id }]
     }));
+
+    if (effect.type === 'dmg') {
+      setDamagedIds(prev => new Set([...prev, targetId]));
+      setTimeout(() => {
+        setDamagedIds(prev => {
+          const next = new Set(prev);
+          next.delete(targetId);
+          return next;
+        });
+      }, 400);
+    }
+
     setTimeout(() => {
       setCharVfx(prev => ({
         ...prev,
@@ -396,7 +409,7 @@ export const BattleScene: React.FC<BattleProps> = ({
         </div>
 
         {/* Battle Entities */}
-        <div className="w-full flex-1 flex justify-between items-end pb-6 px-4 relative">
+        <div className="w-full flex-1 flex justify-between items-end pb-2 sm:pb-6 px-4 relative">
           
           {/* Projectiles */}
           <div className="absolute inset-0 pointer-events-none z-30">
@@ -422,7 +435,7 @@ export const BattleScene: React.FC<BattleProps> = ({
           </div>
 
           {/* Party (Left) */}
-          <div className="flex gap-4 items-end relative z-20 scale-110 sm:scale-125 transform origin-bottom-left">
+          <div className="flex gap-2 sm:gap-4 items-end relative z-20 scale-[0.85] sm:scale-110 md:scale-125 transform origin-bottom-left">
             {characters.map(char => {
               const vfxList = charVfx[char.id] || [];
               const isAttacking = attackingIds.has(char.id);
@@ -448,12 +461,16 @@ export const BattleScene: React.FC<BattleProps> = ({
 
                   <motion.div
                     animate={
-                      princeAttacks && !char.dead
+                      damagedIds.has(char.id)
+                        ? { x: [0, -8, 8, -8, 8, 0], scale: [1, 0.95, 1.05, 1] }
+                        : princeAttacks && !char.dead
                         ? { y: [0, -25, 0], scale: [1, 1.2, 1], rotate: [0, 12, -12, 0] }
                         : { y: char.dead ? 0 : [0, -4, 0] }
                     }
                     transition={
-                      princeAttacks && !char.dead
+                      damagedIds.has(char.id)
+                        ? { duration: 0.3 }
+                        : princeAttacks && !char.dead
                         ? { repeat: Infinity, duration: 0.45, ease: "easeInOut" }
                         : { repeat: char.dead ? 0 : Infinity, duration: 2, delay: Math.random() }
                     }
@@ -467,7 +484,7 @@ export const BattleScene: React.FC<BattleProps> = ({
           </div>
 
           {/* Enemies (Right) */}
-          <div className="flex gap-3 items-end flex-row-reverse relative z-10 scale-110 sm:scale-125 transform origin-bottom-right">
+          <div className="flex gap-2 sm:gap-3 items-end flex-row-reverse relative z-10 scale-[0.85] sm:scale-110 md:scale-125 transform origin-bottom-right">
             <AnimatePresence>
               {enemies.map((enemy, idx) => {
                 const vfxList = charVfx[enemy.id] || [];
@@ -507,8 +524,16 @@ export const BattleScene: React.FC<BattleProps> = ({
                     </AnimatePresence>
                     
                     <motion.div 
-                      animate={{ y: [0, enemy.isBoss ? -12 : -6, 0] }}
-                      transition={{ repeat: Infinity, duration: enemy.isBoss ? 2 : 1.2, ease: "easeInOut", delay: idx * 0.2 }}
+                      animate={
+                        damagedIds.has(enemy.id)
+                          ? { x: [0, 8, -8, 8, -8, 0], scale: [1, 1.1, 0.9, 1] }
+                          : { y: [0, enemy.isBoss ? -12 : -6, 0] }
+                      }
+                      transition={
+                        damagedIds.has(enemy.id)
+                          ? { duration: 0.3 }
+                          : { repeat: Infinity, duration: enemy.isBoss ? 2 : 1.2, ease: "easeInOut", delay: idx * 0.2 }
+                      }
                       className={enemy.isBoss ? "scale-150 transform origin-bottom drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] z-20" : ""}
                     >
                        <EnemySprite enemy={enemy} isAttacking={isAttacking} />

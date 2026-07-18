@@ -5,12 +5,14 @@ import { getLevelData, INITIAL_CHARACTERS } from './levels';
 import { audio } from './audio';
 import { triggerHaptic } from './haptics';
 
-type GameState = 'IDLE' | 'SWAPPING' | 'MATCHING' | 'FALLING' | 'REFILLING' | 'GAME_OVER' | 'LEVEL_COMPLETE' | 'SLOT_MACHINE' | 'LOADING';
+type GameState = 'IDLE' | 'SWAPPING' | 'MATCHING' | 'FALLING' | 'REFILLING' | 'GAME_OVER' | 'LEVEL_COMPLETE' | 'SLOT_MACHINE' | 'LOADING' | 'ENEMY_TURN';
 
 export const useGame = (options: { initialLevel?: number, upgrades?: { level: number }, onWin?: (level: number, carrots: number, score: number) => void, onLose?: (level: number) => void, onClearTiles?: (counts: Record<TileType, number>) => void } = {}) => {
   const { initialLevel = 1, upgrades = { level: 1 }, onWin, onLose, onClearTiles } = options;
   const [board, setBoard] = useState<Tile[]>([]);
   const [gameState, setGameState] = useState<GameState>('IDLE');
+  const [currentTurn, setCurrentTurn] = useState<'PLAYER' | 'ENEMY'>('PLAYER');
+  const [extraTurns, setExtraTurns] = useState(0);
   const [selectedPos, setSelectedPos] = useState<Position | null>(null);
   const [combo, setCombo] = useState(0);
   const [score, setScore] = useState(0);
@@ -103,9 +105,6 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
             // End level with LEVEL_COMPLETE when survival timer hits 0
             setGameState('LEVEL_COMPLETE');
             audio.playLevelComplete();
-            setTimeout(() => {
-              setGameState('SLOT_MACHINE');
-            }, 1500);
             return 0;
           }
           return prev - 1;
@@ -174,6 +173,8 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
 
     updateBoard(newBoard);
     setGameState('IDLE');
+    setCurrentTurn('PLAYER');
+    setExtraTurns(0);
 
     // 2. Fetch customized AI-generated enemies from the Express backend
     let active = true;
@@ -347,8 +348,10 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
 
   const processEnemyAttacks = useCallback(() => {
     const { enemies, characters, level, wave, currentLevelData } = stateRef.current;
+    
     // Check if enemies are defeated
     if (enemies.length === 0) {
+      setCurrentTurn('PLAYER');
       const data = currentLevelData || getLevelData(level);
       if (wave + 1 < data.waves.length) {
         // Next wave
@@ -382,23 +385,27 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     let newEnemies = [...enemies];
     let newChars = characters.map(c => ({...c}));
     
+    // Determine if enemy gets an extra turn (15% chance to simulate "matching 4")
+    const enemyExtraTurnChance = Math.random() < 0.15;
+    
     newEnemies = newEnemies.map(enemy => {
-      if (enemy.attackCooldown <= 1) {
-        anyAttack = true;
-        // Hit a random alive character
-        const aliveChars = newChars.filter(c => !c.dead);
-        if (aliveChars.length > 0) {
-          const target = aliveChars[Math.floor(Math.random() * aliveChars.length)];
-          const tIdx = newChars.findIndex(c => c.id === target.id);
-          newChars[tIdx].hp -= enemy.attack;
-          if (newChars[tIdx].hp <= 0) {
-            newChars[tIdx].hp = 0;
-            newChars[tIdx].dead = true;
-          }
+      // In turn-based mode, cooldown is less critical, but we can use it to skip turns or just attack every turn
+      // The user wants "each turn... they attack", so we'll make them attack if cooldown is low OR just attack every turn.
+      // Let's make them attack every enemy turn for clarity.
+      
+      anyAttack = true;
+      // Hit a random alive character
+      const aliveChars = newChars.filter(c => !c.dead);
+      if (aliveChars.length > 0) {
+        const target = aliveChars[Math.floor(Math.random() * aliveChars.length)];
+        const tIdx = newChars.findIndex(c => c.id === target.id);
+        newChars[tIdx].hp -= enemy.attack;
+        if (newChars[tIdx].hp <= 0) {
+          newChars[tIdx].hp = 0;
+          newChars[tIdx].dead = true;
         }
-        return { ...enemy, attackCooldown: enemy.maxCooldown };
       }
-      return { ...enemy, attackCooldown: enemy.attackCooldown - 1 };
+      return { ...enemy, attackCooldown: enemy.maxCooldown };
     });
 
     setEnemies(newEnemies);
@@ -408,28 +415,42 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
       setGameState('GAME_OVER');
       audio.playGameOver();
       triggerHaptic('error');
-      setTimeout(() => {
-        if (onLose) onLose(level);
-      }, 1500);
+      if (onLose) onLose(level);
     } else {
-      // Check if board has possible moves, if not, shuffle!
-      const move = findPossibleMove(stateRef.current.board);
-      if (!move && stateRef.current.board.length > 0) {
-        console.log('[useGame] No moves possible, shuffling board...');
-        setGameState('REFILLING');
+      // If enemy gets extra turn, wait a bit and attack again
+      if (enemyExtraTurnChance) {
+        setComboPopup({
+          text: "ENEMY EXTRA TURN!",
+          carrots: 0,
+          multiplier: 1,
+          id: Math.random().toString()
+        });
         setTimeout(() => {
-          let shuffledBoard = createBoard();
-          while (hasMatches(shuffledBoard) || !findPossibleMove(shuffledBoard)) {
-            shuffledBoard = createBoard();
-          }
-          updateBoard(shuffledBoard);
-          setGameState('IDLE');
-        }, 1000);
+          setComboPopup(null);
+          processEnemyAttacks();
+        }, 1200);
       } else {
-        setGameState('IDLE');
+        // Switch back to player
+        setCurrentTurn('PLAYER');
+        // Check if board has possible moves, if not, shuffle!
+        const move = findPossibleMove(stateRef.current.board);
+        if (!move && stateRef.current.board.length > 0) {
+          console.log('[useGame] No moves possible, shuffling board...');
+          setGameState('REFILLING');
+          setTimeout(() => {
+            let shuffledBoard = createBoard();
+            while (hasMatches(shuffledBoard) || !findPossibleMove(shuffledBoard)) {
+              shuffledBoard = createBoard();
+            }
+            updateBoard(shuffledBoard);
+            setGameState('IDLE');
+          }, 1000);
+        } else {
+          setGameState('IDLE');
+        }
       }
     }
-  }, [onWin, onLose]);
+  }, [onWin, onLose, setComboPopup]);
 
   const [rainbowTriggered, setRainbowTriggered] = useState(false);
 
@@ -447,7 +468,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
         const counts: Record<TileType, number> = {
           [TileType.EMPTY]: 0, [TileType.SWORD]: 0, [TileType.GUN]: 0, 
           [TileType.BOMB]: 0, [TileType.HEART]: 0, [TileType.CAKE]: 0, [TileType.RAINBOW]: 0,
-          [TileType.HORIZONTAL_CLEARER]: 0, [TileType.PLUS_CLEARER]: 0, [TileType.CROSS_CLEARER]: 0, [TileType.SMILEY_CLEARER]: 0
+          [TileType.HORIZONTAL_CLEARER]: 0, [TileType.VERTICAL_CLEARER]: 0, [TileType.PLUS_CLEARER]: 0, [TileType.CROSS_CLEARER]: 0, [TileType.SMILEY_CLEARER]: 0
         };
         currentBoard.forEach(t => {
            if (t.type in counts) counts[t.type as TileType]++;
@@ -503,6 +524,11 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
               bonusCarrotsThisMatch += 30;
             }
           });
+        }
+
+        // EXTRA TURN LOGIC
+        if (maxGroupSize >= 4) {
+          setExtraTurns(prev => prev + 1);
         }
         
         // Multiplier based on max group size
@@ -583,12 +609,36 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
           if (hasMatches(stateRef.current.board)) {
             setMatchTick(t => t + 1);
           } else {
-            processEnemyAttacks();
+            // End of player matches
+            if (extraTurns > 0) {
+              setExtraTurns(prev => prev - 1);
+              setComboPopup({
+                text: "EXTRA TURN!",
+                carrots: 0,
+                multiplier: 1,
+                id: Math.random().toString()
+              });
+              setGameState('IDLE');
+              setTimeout(() => setComboPopup(null), 1200);
+            } else {
+              setGameState('ENEMY_TURN');
+              setTimeout(() => {
+                processEnemyAttacks();
+              }, 1000);
+            }
           }
         }, 50);
       } else {
-        // No more matches, enemies turn to attack
-        processEnemyAttacks();
+        // No more matches
+        if (extraTurns > 0) {
+          setExtraTurns(prev => prev - 1);
+          setGameState('IDLE');
+        } else {
+          setGameState('ENEMY_TURN');
+          setTimeout(() => {
+            processEnemyAttacks();
+          }, 1000);
+        }
       }
     }
 
@@ -602,7 +652,7 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
   const onTileClick = (pos: Position) => {
     resetInactivity();
     if (isPaused) return;
-    if (gameState !== 'IDLE') return;
+    if (gameState !== 'IDLE' || currentTurn !== 'PLAYER') return;
 
     const clickedTile = board.find(t => t.r === pos.r && t.c === pos.c);
     if (clickedTile?.lockType) {
@@ -712,6 +762,11 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     setCombo(0);
     setRetryTrigger(prev => prev + 1);
     setIsPaused(false);
+    setGameState('IDLE');
+  };
+
+  const startSlotMachine = () => {
+    setGameState('SLOT_MACHINE');
   };
 
   return {
@@ -740,8 +795,11 @@ export const useGame = (options: { initialLevel?: number, upgrades?: { level: nu
     isPaused,
     setIsPaused,
     retryLevel,
+    startSlotMachine,
     hintPositions,
     combo,
-    bossRequiredTypes
+    bossRequiredTypes,
+    currentTurn,
+    extraTurns
   };
 };

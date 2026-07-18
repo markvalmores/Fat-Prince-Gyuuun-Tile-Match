@@ -102,28 +102,54 @@ export default function App() {
     setPlayerId(pid);
     const name = localStorage.getItem('fatPrincePlayerName') || 'Knight';
     
-    loadUserMissions(pid, name).then(data => {
-      setMissionsData(data);
-    }).catch(err => {
-      console.error("Error loading user missions on mount:", err);
-    });
+    const initializeData = async () => {
+      try {
+        const [missions, profile] = await Promise.all([
+          loadUserMissions(pid, name),
+          loadUserProfile(pid, name)
+        ]);
+        
+        setMissionsData(missions);
+        
+        let activeProfile = profile;
+        if (profile && !profile.claimedOccasions.includes('birthday_bonus_34197')) {
+          const bonusAmount = 34197;
+          const updatedProfile = {
+            ...profile,
+            claimedOccasions: [...profile.claimedOccasions, 'birthday_bonus_34197']
+          };
+          activeProfile = updatedProfile;
+          
+          // Save to local state and storage
+          setCarrots(prev => {
+            const newVal = prev + bonusAmount;
+            localStorage.setItem('fatPrinceCarrots', newVal.toString());
+            return newVal;
+          });
+          
+          // Save to Firestore
+          await saveUserProfile(pid, name, updatedProfile);
+          console.log(`[App] Birthday Bonus of ${bonusAmount} Carrots applied!`);
+        }
+        
+        setUserProfileData(activeProfile);
+      } catch (err) {
+        console.error("Error initializing user data:", err);
+        setUserProfileData({
+          playerId: pid,
+          playerName: name,
+          claimedLoginDays: [],
+          claimedOccasions: [],
+          levelStars: {},
+          cumulativeStars: 0,
+          birthday: '',
+          email: '',
+          updatedAt: null
+        });
+      }
+    };
 
-    loadUserProfile(pid, name).then(profile => {
-      setUserProfileData(profile);
-    }).catch(err => {
-      console.error("Error loading user profile on mount:", err);
-      setUserProfileData({
-        playerId: pid,
-        playerName: name,
-        claimedLoginDays: [],
-        claimedOccasions: [],
-        levelStars: {},
-        cumulativeStars: 0,
-        birthday: '',
-        email: '',
-        updatedAt: null
-      });
-    });
+    initializeData();
   }, []);
 
   const saveCarrots = (amount: number) => {

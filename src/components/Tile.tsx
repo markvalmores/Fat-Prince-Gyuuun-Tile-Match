@@ -33,7 +33,7 @@ const tileIcons = {
   [TileType.HEART]: '❤️',
   [TileType.CAKE]: '🍰',
   [TileType.RAINBOW]: '🌈',
-  [TileType.HORIZONTAL_CLEARER]: 'https://www.image2url.com/r2/default/images/1784321838325-c241a616-e954-4615-a1ea-641ad70a715e.jpg',
+  [TileType.HORIZONTAL_CLEARER]: 'https://www.image2url.com/r2/default/images/1784342191955-a0166ece-e241-4eb3-9829-a8d5c7e8d864.jpg',
   [TileType.VERTICAL_CLEARER]: '↕️',
   [TileType.PLUS_CLEARER]: '➕',
   [TileType.CROSS_CLEARER]: '✖️',

@@ -14,6 +14,9 @@ const getBunnyGif = (type: BunnyType, isAttacking?: boolean) => {
     if (type === 'blue_scarf') {
       return 'https://media.tenor.com/CbV12azvZZMAAAAi/usagyuuun-usagyuuun-sticker.gif';
     }
+    if (type === 'fever_prince') {
+      return 'https://media.tenor.com/xaqeGOSg62MAAAAi/usagyuuun-martillo.gif';
+    }
     return 'https://media1.tenor.com/m/QxE-o0_qzbYAAAAC/usagyuuun-laptop.gif'; // Laptop slam high-speed action!
   }
   switch (type) {
@@ -30,7 +33,7 @@ const getBunnyGif = (type: BunnyType, isAttacking?: boolean) => {
     case 'princess':
       return 'https://media.tenor.com/N-XZDw1edt4AAAAi/%E5%A4%A7%E5%A5%BD%E3%81%8D-%E3%81%86%E3%81%95%E3%81%8E%E3%82%85%E3%83%BC%E3%82%93.gif';
     case 'fever_prince':
-      return 'https://media1.tenor.com/m/vXmudVdY3qQAAAAC/usagyuuun-usagyuuun-sticker.gif';
+      return 'https://media.tenor.com/xaqeGOSg62MAAAAi/usagyuuun-martillo.gif';
     default:
       return 'https://media1.tenor.com/m/vXmudVdY3qQAAAAC/usagyuuun-usagyuuun-sticker.gif';
   }

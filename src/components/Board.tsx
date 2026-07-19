@@ -40,7 +40,17 @@ export const Board: React.FC<BoardProps> = ({ board, selectedPos, cursorPos, hin
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    if (boardRef.current) {
+      try {
+        boardRef.current.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    }
+    
+    if (e.isPrimary) {
+      // Primary touch or mouse click started: safe to clear stale pointers
+      pointers.current.clear();
+    }
+    
     pointers.current.set(e.pointerId, e);
     if (pointers.current.size === 1) {
       const pos = getPosFromEvent(e.clientX, e.clientY);
@@ -64,6 +74,14 @@ export const Board: React.FC<BoardProps> = ({ board, selectedPos, cursorPos, hin
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    // Fail-safe: if no buttons are pressed, there are no active pointers dragging!
+    if (e.buttons === 0) {
+      pointers.current.clear();
+      setLastDist(null);
+      setDragStartPos(null);
+      return;
+    }
+
     if (!pointers.current.has(e.pointerId)) return;
     pointers.current.set(e.pointerId, e);
 
@@ -88,6 +106,13 @@ export const Board: React.FC<BoardProps> = ({ board, selectedPos, cursorPos, hin
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    if (boardRef.current) {
+      try {
+        if (boardRef.current.hasPointerCapture(e.pointerId)) {
+          boardRef.current.releasePointerCapture(e.pointerId);
+        }
+      } catch (err) {}
+    }
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) {
       setLastDist(null);

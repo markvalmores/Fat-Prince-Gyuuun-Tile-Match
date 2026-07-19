@@ -40,12 +40,15 @@ const LevelNode = ({
         }
       }}
     >
-      {/* Node House/Castle icon (shocked orange bunny head visual) */}
-      <div className={`w-10 h-10 relative flex items-center justify-center z-10 shadow-sm ${!isUnlocked && 'grayscale opacity-60'}`}>
+      {/* Node House/Castle icon (shocked orange bunny head visual replaced by animated Usagyuuun) */}
+      <div className="w-12 h-12 relative flex items-center justify-center z-10 shadow-sm">
          <img 
-           src="https://www.image2url.com/r2/default/images/1784316642112-c03f818d-9cbd-4116-be7c-d62c51737ed6.png" 
+           src={isUnlocked 
+             ? (level === 1 ? 'https://media.tenor.com/D7HU98moCwMAAAAi/line.gif' : 'https://media.tenor.com/2gi5ucI5THgAAAAi/usagyuuun-note.gif')
+             : 'https://media.tenor.com/N-XZDw1edt4AAAAi/%E5%A4%A7%E5%A5%BD%E3%81%8D-%E3%81%86%E3%81%95%E3%81%8E%E3%82%85%E3%83%BC%E3%82%93.gif'} 
            alt="Level Node" 
-           className="w-full h-full object-contain drop-shadow-md pointer-events-none"
+           className={`w-full h-full object-contain drop-shadow-md pointer-events-none ${!isUnlocked ? 'grayscale opacity-60' : ''}`}
+           referrerPolicy="no-referrer"
          />
          {isCurrent && (
             <motion.div 

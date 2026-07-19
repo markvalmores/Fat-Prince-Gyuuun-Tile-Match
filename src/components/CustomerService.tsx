@@ -62,9 +62,10 @@ export const CustomerService: React.FC = () => {
         title="Chat Customer Service"
       >
         <img 
-          src="https://www.image2url.com/r2/default/images/1784316642112-c03f818d-9cbd-4116-be7c-d62c51737ed6.png" 
+          src="https://media1.tenor.com/m/QxE-o0_qzbYAAAAC/usagyuuun-laptop.gif" 
           alt="Support" 
-          className="w-full h-full object-contain pointer-events-none"
+          className="w-full h-full object-contain pointer-events-none select-none rounded-full"
+          referrerPolicy="no-referrer"
         />
       </motion.button>
 
